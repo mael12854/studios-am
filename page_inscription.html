@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créer un compte - Les studios a&amp;m</title>
+    <link rel="icon" type="image/jpeg" href="unnamed.jpg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6EA9FB">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            background-color: #6EA9FB; /* Votre Couleur */
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .logo {
+            width: 180px;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .signup-box {
+            background: white;
+            max-width: 320px;
+            margin: 1rem auto;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            text-align: left;
+        }
+
+        .signup-box h1 {
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.6rem;
+            background-color: #6EA9FB;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #5a94e0;
+        }
+
+        button:disabled {
+            background-color: #a9c8f5;
+            cursor: not-allowed;
+        }
+
+        #message {
+            font-size: 0.9rem;
+            min-height: 1.2rem;
+            text-align: center;
+        }
+
+        .login-link {
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .login-link a {
+            color: #6EA9FB;
+        }
+    </style>
+</head>
+<body>
+    <img class="logo" src="unnamed.jpg" alt="Logo des studios a&m">
+
+    <div class="signup-box">
+        <h1>Créer un compte</h1>
+
+        <form id="signupForm">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username" required>
+
+            <label for="password">Mot de passe (6 caractères minimum)</label>
+            <input id="password" type="password" autocomplete="new-password" minlength="6" required>
+
+            <button type="submit" id="submitBtn">Créer mon compte</button>
+        </form>
+
+        <p id="message" aria-live="polite"></p>
+
+        <p class="login-link">Déjà un compte ? <a href="page_de_connexion.html">Se connecter</a></p>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        document.getElementById("signupForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            const messageEl = document.getElementById("message");
+            const submitBtn = document.getElementById("submitBtn");
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Création...";
+            messageEl.textContent = "";
+
+            const { data, error } = await sb.auth.signUp({ email, password });
+
+            if (error) {
+                messageEl.textContent = "❌ " + (error.message || "Une erreur est survenue côté serveur (envoi de l'email). Réessaie dans un instant.");
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Créer mon compte";
+                return;
+            }
+
+            if (data.session) {
+                window.location.href = "accueil.html";
+            } else {
+                messageEl.textContent = "✅ Compte créé ! Vérifie ta boîte mail pour confirmer, puis connecte-toi.";
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Créer mon compte";
+            }
+        });
+    </script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js").catch(() => {});
+        }
+    </script>
+</body>
+</html>
