@@ -64,11 +64,12 @@ a { color: var(--gold); }
 }
 
 .page-logo {
+    display: block;
     width: 96px;
     height: 96px;
     border-radius: 50%;
     object-fit: cover;
-    margin-bottom: 1rem;
+    margin: 0 auto 1rem;
     box-shadow: var(--shadow-sm);
 }
 
