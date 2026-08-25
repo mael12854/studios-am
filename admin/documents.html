@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="nuit">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,18 +7,13 @@
     <link rel="icon" type="image/png" href="../icon-192.png">
     <link rel="shortcut icon" type="image/png" href="../icon-192.png">
     <link rel="apple-touch-icon" href="../icon-192.png">
+    <meta name="theme-color" content="#161513">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * { box-sizing: border-box; }
-
-        body {
-            background-color: #1c1f26;
-            font-family: Arial, sans-serif;
-            color: #f0f0f0;
-            margin: 0;
-            padding: 1.5rem;
-        }
-
         header {
             display: flex;
             justify-content: space-between;
@@ -28,131 +23,58 @@
             gap: 1rem;
         }
 
-        h1 {
-            font-size: 1.4rem;
-            margin: 0;
-        }
+        header h1 { margin: 0; font-size: 1.3rem; }
+        header nav { display: flex; gap: .75rem; flex-wrap: wrap; }
+        header nav a { text-decoration: none; }
 
-        button, a.nav-link {
-            padding: 0.6rem 1rem;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .btn-primary {
-            background-color: #6EA9FB;
-            color: #1c1f26;
-        }
-
-        .btn-primary:hover {
-            background-color: #5a94e0;
-        }
-
-        .btn-secondary {
-            background-color: #3a4150;
-            color: #f0f0f0;
-        }
-
-        .btn-secondary:hover {
-            background-color: #4a5164;
-        }
-
-        .btn-danger {
-            background-color: #e05a5a;
-            color: #fff;
-        }
-
-        .btn-danger:hover {
-            background-color: #c94848;
-        }
-
-        .btn-small {
-            padding: 0.35rem 0.7rem;
-            font-size: 0.85rem;
-        }
-
-        #formSection {
-            background: #262a33;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            display: none;
-        }
-
-        #formSection.active {
-            display: block;
-        }
-
-        #formSection h2 {
-            margin-top: 0;
-            font-size: 1.1rem;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        label {
-            display: block;
-            font-size: 0.85rem;
-            margin-bottom: 0.25rem;
-            color: #ccc;
-        }
-
-        input, textarea {
-            width: 100%;
-            padding: 0.6rem;
-            border: 1px solid #444;
-            border-radius: 6px;
-            background: #1c1f26;
-            color: #f0f0f0;
-            font-family: inherit;
-        }
+        #formSection { display: none; margin-bottom: 2rem; }
+        #formSection.active { display: block; }
+        #formSection h2 { margin-top: 0; font-size: 1.1rem; }
 
         .hint {
-            font-size: 0.75rem;
-            color: #888;
-            margin-top: 0.25rem;
+            font-size: .78rem;
+            color: var(--ink-muted);
+            margin-top: .25rem;
         }
 
         .form-actions {
             display: flex;
-            gap: 0.75rem;
-            margin-top: 0.5rem;
+            gap: .75rem;
+            margin-top: .5rem;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            background: #262a33;
-            border-radius: 10px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
             overflow: hidden;
         }
 
         th, td {
             text-align: left;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #3a4150;
-            font-size: 0.9rem;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--line);
+            font-size: .92rem;
         }
 
         th {
-            background: #1c1f26;
-            color: #999;
-            font-size: 0.8rem;
+            font-family: var(--font-mono);
+            background: var(--surface-alt);
+            color: var(--ink-muted);
+            font-size: .72rem;
+            letter-spacing: .05em;
             text-transform: uppercase;
         }
 
-        .actions-cell {
-            display: flex;
-            gap: 0.5rem;
-        }
+        .actions-cell { display: flex; gap: .5rem; }
+
+        .btn-danger { border-color: var(--danger); color: var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: var(--bg); }
 
         #message {
-            font-size: 0.9rem;
+            font-size: .9rem;
             margin-bottom: 1rem;
             min-height: 1.2rem;
         }
@@ -160,22 +82,22 @@
         .empty-state {
             text-align: center;
             padding: 2rem;
-            color: #999;
+            color: var(--ink-muted);
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>📄 Documents officiels</h1>
-        <div style="display:flex; gap:0.75rem;">
-            <a class="nav-link btn-secondary" href="dashboard.html">← Tableau de bord</a>
+        <h1>Documents officiels</h1>
+        <nav>
+            <a class="btn" href="dashboard.html">← Tableau de bord</a>
             <button class="btn-primary" id="addBtn">+ Ajouter un document</button>
-        </div>
+        </nav>
     </header>
 
     <p id="message" aria-live="polite"></p>
 
-    <section id="formSection">
+    <section id="formSection" class="card">
         <h2 id="formTitle">Ajouter un document</h2>
         <form id="docForm">
             <input type="hidden" id="docId">
@@ -193,12 +115,12 @@
             <div class="form-group">
                 <label for="file_name">Nom du fichier PDF</label>
                 <input id="file_name" type="text" placeholder="ex: nouveau_document.pdf" required>
-                <p class="hint">⚠️ Le fichier PDF doit être déposé manuellement dans le dossier du site public (à côté de accueil.html), avec exactement ce nom.</p>
+                <p class="hint">Le fichier PDF doit être déposé manuellement dans le dossier du site public (à côté de accueil.html), avec exactement ce nom.</p>
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn-primary" id="saveBtn">Enregistrer</button>
-                <button type="button" class="btn-secondary" id="cancelBtn">Annuler</button>
+                <button type="button" class="btn" id="cancelBtn">Annuler</button>
             </div>
         </form>
     </section>
@@ -273,9 +195,9 @@
             }
 
             if (error) {
-                messageEl.textContent = "❌ Erreur : " + error.message;
+                messageEl.textContent = "Erreur : " + error.message;
             } else {
-                messageEl.textContent = "✅ Document enregistré !";
+                messageEl.textContent = "Document enregistré.";
                 formSection.classList.remove("active");
                 form.reset();
                 loadDocuments();
@@ -291,7 +213,7 @@
                 .order("created_at", { ascending: true });
 
             if (error) {
-                tbody.innerHTML = `<tr><td colspan="3">⚠️ ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3">${escapeHtml(error.message)}</td></tr>`;
                 return;
             }
 
@@ -307,8 +229,8 @@
                     <td>${escapeHtml(doc.title)}</td>
                     <td>${escapeHtml(doc.file_name)}</td>
                     <td class="actions-cell">
-                        <button class="btn-secondary btn-small" data-action="edit" data-id="${doc.id}">Modifier</button>
-                        <button class="btn-danger btn-small" data-action="delete" data-id="${doc.id}">Supprimer</button>
+                        <button class="btn" data-action="edit" data-id="${doc.id}">Modifier</button>
+                        <button class="btn btn-danger" data-action="delete" data-id="${doc.id}">Supprimer</button>
                     </td>
                 </tr>
             `).join("");
@@ -337,9 +259,9 @@
             const { error } = await sb.from("documents").delete().eq("id", id);
 
             if (error) {
-                messageEl.textContent = "❌ Erreur : " + error.message;
+                messageEl.textContent = "Erreur : " + error.message;
             } else {
-                messageEl.textContent = "🗑️ Document supprimé.";
+                messageEl.textContent = "Document supprimé.";
                 loadDocuments();
             }
         }

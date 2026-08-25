@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="nuit">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,18 +7,13 @@
     <link rel="icon" type="image/png" href="../icon-192.png">
     <link rel="shortcut icon" type="image/png" href="../icon-192.png">
     <link rel="apple-touch-icon" href="../icon-192.png">
+    <meta name="theme-color" content="#161513">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * { box-sizing: border-box; }
-
-        body {
-            background-color: #1c1f26;
-            font-family: Arial, sans-serif;
-            color: #f0f0f0;
-            margin: 0;
-            padding: 1.5rem;
-        }
-
         header {
             display: flex;
             justify-content: space-between;
@@ -28,28 +23,9 @@
             gap: 1rem;
         }
 
-        h1 {
-            font-size: 1.4rem;
-            margin: 0;
-        }
-
-        a.nav-link, button {
-            padding: 0.6rem 1rem;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .btn-secondary {
-            background-color: #3a4150;
-            color: #f0f0f0;
-        }
-
-        .btn-secondary:hover {
-            background-color: #4a5164;
-        }
+        header h1 { margin: 0; font-size: 1.3rem; }
+        header nav { display: flex; gap: .75rem; }
+        header nav a { text-decoration: none; }
 
         .layout {
             display: flex;
@@ -59,46 +35,41 @@
 
         .conversations {
             width: 300px;
-            background: #262a33;
-            border-radius: 10px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
             overflow-y: auto;
             flex-shrink: 0;
         }
 
         .conversation-item {
             padding: 1rem;
-            border-bottom: 1px solid #3a4150;
+            border-bottom: 1px solid var(--line);
             cursor: pointer;
         }
 
-        .conversation-item:hover {
-            background: #2f3440;
-        }
-
-        .conversation-item.active {
-            background: #384a68;
-        }
+        .conversation-item:hover { background: var(--surface-alt); }
+        .conversation-item.active { background: var(--surface-alt); border-left: 2px solid var(--gold); }
 
         .conversation-item .email {
-            font-weight: bold;
-            font-size: 0.9rem;
+            font-weight: 600;
+            font-size: .9rem;
         }
 
         .conversation-item .creator-badge {
             display: inline-block;
-            margin-top: 0.3rem;
-            padding: 0.15rem 0.5rem;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            background: #6EA9FB;
-            color: #1c1f26;
-            font-weight: bold;
+            margin-top: .3rem;
+            font-family: var(--font-mono);
+            font-size: .68rem;
+            color: var(--ink-muted);
+            letter-spacing: .04em;
+            text-transform: uppercase;
         }
 
         .conversation-item .preview {
-            font-size: 0.8rem;
-            color: #999;
-            margin-top: 0.3rem;
+            font-size: .8rem;
+            color: var(--ink-muted);
+            margin-top: .3rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -106,8 +77,9 @@
 
         .chat-panel {
             flex: 1;
-            background: #262a33;
-            border-radius: 10px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -115,9 +87,23 @@
 
         .chat-panel-header {
             padding: 1rem;
-            background: #1c1f26;
-            border-bottom: 1px solid #3a4150;
-            font-weight: bold;
+            background: var(--surface-alt);
+            border-bottom: 1px solid var(--line);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-panel-header .clear-link {
+            background: none;
+            border: none;
+            color: var(--danger);
+            font-size: .8rem;
+            cursor: pointer;
+            font-weight: 600;
+            display: none;
+            padding: 0;
         }
 
         .chat-panel-messages {
@@ -126,65 +112,39 @@
             padding: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 0.6rem;
-        }
-
-        .msg {
-            max-width: 70%;
-            padding: 0.6rem 0.9rem;
-            border-radius: 12px;
-            font-size: 0.9rem;
-        }
-
-        .msg.client {
-            align-self: flex-start;
-            background: #3a4150;
-            color: #f0f0f0;
-        }
-
-        .msg.admin {
-            align-self: flex-end;
-            background: #6EA9FB;
-            color: #1c1f26;
+            gap: .6rem;
         }
 
         .chat-panel-form {
-            display: flex;
-            border-top: 1px solid #3a4150;
+            display: none;
+            border-top: 1px solid var(--line);
         }
 
         .chat-panel-form input {
             flex: 1;
             border: none;
-            padding: 0.8rem;
-            background: #1c1f26;
-            color: #f0f0f0;
+            border-radius: 0;
+            padding: .8rem;
+            margin: 0;
         }
 
-        .chat-panel-form input:focus {
-            outline: none;
-        }
+        .chat-panel-form input:focus { box-shadow: none; }
 
         .chat-panel-form button {
+            border: none;
             border-radius: 0;
-            background: #6EA9FB;
-            color: #1c1f26;
-        }
-
-        .empty-hint {
-            color: #999;
-            text-align: center;
-            padding: 2rem;
+            background: var(--ink);
+            color: var(--bg);
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>💬 Messages clients</h1>
-        <div style="display:flex; gap:0.75rem;">
-            <a class="nav-link btn-secondary" href="dashboard.html">← Tableau de bord</a>
-            <button class="btn-secondary" id="logoutBtn">Se déconnecter</button>
-        </div>
+        <h1>Messages clients</h1>
+        <nav>
+            <a class="btn" href="dashboard.html">← Tableau de bord</a>
+            <button class="btn" id="logoutBtn">Se déconnecter</button>
+        </nav>
     </header>
 
     <div class="layout">
@@ -192,12 +152,12 @@
             <p class="empty-hint">Chargement...</p>
         </div>
         <div class="chat-panel">
-            <div class="chat-panel-header" id="chatPanelHeader" style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="chat-panel-header" id="chatPanelHeader">
                 <span>Sélectionne une conversation</span>
-                <button id="clearConvBtn" style="display:none; background:none; border:none; color:#e05a5a; font-size:0.8rem; cursor:pointer; font-weight:bold;">🗑️ Effacer</button>
+                <button id="clearConvBtn" class="clear-link">Effacer</button>
             </div>
             <div class="chat-panel-messages" id="chatPanelMessages"></div>
-            <form class="chat-panel-form" id="chatPanelForm" style="display:none;">
+            <form class="chat-panel-form" id="chatPanelForm">
                 <input type="text" id="replyInput" placeholder="Répondre..." autocomplete="off">
                 <button type="submit">Envoyer</button>
             </form>
@@ -244,7 +204,7 @@
                 .order("created_at", { ascending: false });
 
             if (error) {
-                listEl.innerHTML = `<p class="empty-hint">⚠️ ${error.message}</p>`;
+                listEl.innerHTML = `<p class="empty-hint">${escapeHtml(error.message)}</p>`;
                 return;
             }
 
@@ -303,7 +263,7 @@
                 .order("created_at", { ascending: true });
 
             if (error) {
-                messagesEl.innerHTML = `<p class="empty-hint">⚠️ ${error.message}</p>`;
+                messagesEl.innerHTML = `<p class="empty-hint">${escapeHtml(error.message)}</p>`;
                 return;
             }
 

@@ -4,27 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Documents officiels - Les studios a&amp;m</title>
-    <link rel="icon" type="image/png" href="icon-192.png">
-    <link rel="shortcut icon" type="image/png" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6EA9FB">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#F6F1E5">
+    <link rel="apple-touch-icon" href="icon-192-lumiere.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body {
-            background-color: #6EA9FB; /* Votre Couleur */
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 2rem;
-        }
+        body { text-align: center; }
 
-        .logo {
-            width: 180px;
-            height: auto;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
+        .page-logo { margin: 0 auto 1rem; }
 
         .doc-list {
             max-width: 550px;
@@ -33,137 +26,41 @@
         }
 
         .doc-card {
-            background: white;
-            border-radius: 10px;
-            padding: 1.2rem 1.5rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 1rem;
+            margin-bottom: 1rem;
         }
 
         .doc-info h3 {
             margin: 0 0 0.3rem;
-            font-size: 1rem;
+            font-size: 1.05rem;
         }
 
         .doc-info p {
             margin: 0;
             font-size: 0.85rem;
-            color: #666;
+            color: var(--ink-muted);
         }
 
-        .doc-card a {
+        .doc-card .btn {
             flex-shrink: 0;
-            padding: 0.5rem 1rem;
-            background-color: #6EA9FB;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
             font-size: 0.85rem;
-        }
-
-        .doc-card a:hover {
-            background-color: #5a94e0;
-        }
-
-        a.back {
-            display: inline-block;
-            margin-top: 1.5rem;
-            padding: 0.6rem 1.2rem;
-            background-color: #ffffff;
-            color: #333;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-        }
-
-        a.back:hover {
-            background-color: #e0e0e0;
-        }
-
-        #a11y-widget {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 1000;
-            text-align: left;
-        }
-
-        #a11yToggle {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            border: none;
-            background: #ffffff;
-            font-size: 1.3rem;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-
-        #a11yPanel {
-            display: none;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-            background: white;
-            padding: 0.75rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            width: 160px;
-        }
-
-        #a11yPanel.active {
-            display: flex;
-        }
-
-        #a11yPanel button {
-            padding: 0.4rem 0.6rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            background: #f5f5f5;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        #a11yPanel button:hover {
-            background: #e0e0e0;
-        }
-
-        body.high-contrast {
-            background-color: #000000 !important;
-            color: #ffffff !important;
-        }
-
-        body.high-contrast a,
-        body.high-contrast button {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            border: 2px solid #ffffff !important;
-        }
-
-        body.high-contrast .doc-card {
-            background-color: #1a1a1a !important;
-        }
-
-        body.high-contrast .doc-info p {
-            color: #ccc !important;
+            padding: .5rem 1rem;
         }
     </style>
 </head>
 <body>
-    <img class="logo" src="unnamed.jpg" alt="Logo des studios a&m">
+    <img class="page-logo" src="unnamed.jpg" alt="Logo des studios a&amp;m">
 
-    <h2>📄 Documents officiels</h2>
+    <h2>Documents officiels</h2>
 
     <div class="doc-list" id="docList">
         <p style="text-align:center;">Chargement...</p>
     </div>
 
-    <a class="back" href="accueil.html">Retour à l'accueil</a>
+    <a class="btn back" href="accueil.html">Retour à l'accueil</a>
 
     <div id="a11y-widget">
         <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
@@ -179,6 +76,12 @@
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
         async function loadDocuments() {
             const container = document.getElementById("docList");
 
@@ -188,7 +91,7 @@
                 .order("created_at", { ascending: true });
 
             if (error) {
-                container.innerHTML = "<p>⚠️ Impossible de charger les documents.</p>";
+                container.innerHTML = "<p>Impossible de charger les documents.</p>";
                 return;
             }
 
@@ -198,12 +101,12 @@
             }
 
             container.innerHTML = data.map(doc => `
-                <div class="doc-card">
+                <div class="doc-card card">
                     <div class="doc-info">
-                        <h3>${doc.title}</h3>
-                        ${doc.description ? `<p>${doc.description}</p>` : ""}
+                        <h3>${escapeHtml(doc.title)}</h3>
+                        ${doc.description ? `<p>${escapeHtml(doc.description)}</p>` : ""}
                     </div>
-                    <a href="${doc.file_name}" target="_blank" rel="noopener">Voir le PDF</a>
+                    <a class="btn" href="${escapeHtml(doc.file_name)}" target="_blank" rel="noopener">Voir le PDF</a>
                 </div>
             `).join("");
         }
