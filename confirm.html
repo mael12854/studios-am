@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation - Les studios a&amp;m</title>
+    <link rel="icon" type="image/jpeg" href="unnamed.jpg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6EA9FB">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            background-color: #6EA9FB; /* Votre Couleur */
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .box {
+            background: white;
+            max-width: 350px;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        img {
+            width: 120px;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        a.button {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.6rem 1.2rem;
+            background-color: #6EA9FB;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        a.button:hover {
+            background-color: #5a94e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <img src="unnamed.jpg" alt="Logo des studios a&m">
+        <p id="message">Confirmation en cours...</p>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        (async () => {
+            const params = new URLSearchParams(window.location.search);
+            const token_hash = params.get("token_hash");
+            const type = params.get("type") || "signup";
+            const messageEl = document.getElementById("message");
+
+            if (!token_hash) {
+                messageEl.innerHTML = "❌ Lien invalide ou incomplet (paramètre manquant).";
+                return;
+            }
+
+            try {
+                const { data, error } = await sb.auth.verifyOtp({ token_hash, type });
+
+                if (error) {
+                    messageEl.innerHTML = "❌ " + error.message + "<br><a class='button' href='page_de_connexion.html'>Se connecter</a>";
+                } else {
+                    const email = data?.user?.email || "";
+                    messageEl.innerHTML = `✅ Bienvenue parmi nous${email ? " " + email : ""} !<br><a class='button' href='accueil.html'>Continuer</a>`;
+                }
+            } catch (err) {
+                messageEl.innerHTML = "⚠️ Erreur inattendue : " + err.message;
+            }
+        })();
+    </script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js").catch(() => {});
+        }
+    </script>
+</body>
+</html>

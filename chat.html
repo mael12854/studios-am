@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discuter avec les créateurs - Les studios a&amp;m</title>
+    <link rel="icon" type="image/jpeg" href="unnamed.jpg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6EA9FB">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            background-color: #6EA9FB; /* Votre Couleur */
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+        }
+
+        .creator-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .creator-tab {
+            padding: 0.7rem 1.4rem;
+            background: rgba(255,255,255,0.7);
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .creator-tab.active {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .chat-box {
+            background: white;
+            width: 100%;
+            max-width: 480px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            height: 60vh;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 1rem;
+            background: #f5f7fa;
+            border-bottom: 1px solid #eaeef2;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .msg {
+            max-width: 75%;
+            padding: 0.6rem 0.9rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .msg.client {
+            align-self: flex-end;
+            background: #6EA9FB;
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .msg.admin {
+            align-self: flex-start;
+            background: #eef1f5;
+            color: #333;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-form {
+            display: flex;
+            border-top: 1px solid #eaeef2;
+        }
+
+        .chat-form input {
+            flex: 1;
+            border: none;
+            padding: 0.8rem;
+            font-size: 0.9rem;
+        }
+
+        .chat-form input:focus {
+            outline: none;
+        }
+
+        .chat-form button {
+            border: none;
+            background: #6EA9FB;
+            color: white;
+            padding: 0 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .chat-form button:hover {
+            background: #5a94e0;
+        }
+
+        a.back {
+            display: inline-block;
+            margin-top: 1.5rem;
+            padding: 0.6rem 1.2rem;
+            background-color: #ffffff;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        a.back:hover {
+            background-color: #e0e0e0;
+        }
+
+        .empty-hint {
+            color: #999;
+            text-align: center;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        #a11y-widget {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            text-align: left;
+        }
+
+        #a11yToggle {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: #ffffff;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        #a11yPanel {
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            background: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            width: 160px;
+        }
+
+        #a11yPanel.active {
+            display: flex;
+        }
+
+        #a11yPanel button {
+            padding: 0.4rem 0.6rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        #a11yPanel button:hover {
+            background: #e0e0e0;
+        }
+
+        body.high-contrast {
+            background-color: #000000 !important;
+            color: #ffffff !important;
+        }
+
+        body.high-contrast a,
+        body.high-contrast button {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border: 2px solid #ffffff !important;
+        }
+
+        body.high-contrast .chat-box {
+            background-color: #1a1a1a !important;
+        }
+
+        body.high-contrast .chat-header {
+            background-color: #262a33 !important;
+            color: #ffffff !important;
+        }
+
+        body.high-contrast .msg.admin {
+            background-color: #333 !important;
+            color: #fff !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>💬 Discuter avec les créateurs</h1>
+
+    <div class="creator-tabs">
+        <button class="creator-tab active" id="tabMael" onclick="selectCreator('mael')">🎬 Maël Domenech</button>
+        <button class="creator-tab" id="tabAbel" onclick="selectCreator('abel')">🎭 Abel Burkard</button>
+    </div>
+
+    <div class="chat-box">
+        <div class="chat-header">
+            <span id="chatHeader">Conversation avec Maël Domenech</span>
+            <button id="clearBtn" style="float:right; background:none; border:none; color:#c94848; font-size:0.8rem; cursor:pointer; font-weight:bold;">🗑️ Effacer</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <p class="empty-hint">Chargement...</p>
+        </div>
+        <form class="chat-form" id="chatForm">
+            <input type="text" id="messageInput" placeholder="Écris ton message..." required autocomplete="off">
+            <button type="submit">Envoyer</button>
+        </form>
+    </div>
+
+    <a class="back" href="accueil.html">Retour à l'accueil</a>
+
+    <div id="a11y-widget">
+        <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
+        <div id="a11yPanel" aria-hidden="true">
+            <button id="fontIncrease" aria-label="Agrandir le texte">A+</button>
+            <button id="fontDecrease" aria-label="Réduire le texte">A-</button>
+            <button id="contrastToggle" aria-label="Activer le contraste élevé">Contraste élevé</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const creatorNames = { mael: "Maël Domenech", abel: "Abel Burkard" };
+        let currentCreator = "mael";
+        let currentUserId = null;
+        let channel = null;
+
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+
+            if (!session) {
+                window.location.href = "index.html";
+                return;
+            }
+
+            currentUserId = session.user.id;
+            loadConversation();
+        })();
+
+        function selectCreator(creator) {
+            currentCreator = creator;
+            document.getElementById("tabMael").classList.toggle("active", creator === "mael");
+            document.getElementById("tabAbel").classList.toggle("active", creator === "abel");
+            document.getElementById("chatHeader").textContent = "Conversation avec " + creatorNames[creator];
+            loadConversation();
+        }
+
+        async function loadConversation() {
+            const messagesEl = document.getElementById("chatMessages");
+            messagesEl.innerHTML = "<p class='empty-hint'>Chargement...</p>";
+
+            const { data, error } = await sb
+                .from("messages")
+                .select("*")
+                .eq("user_id", currentUserId)
+                .eq("creator", currentCreator)
+                .order("created_at", { ascending: true });
+
+            if (error) {
+                messagesEl.innerHTML = "<p class='empty-hint'>⚠️ Impossible de charger la conversation.</p>";
+                return;
+            }
+
+            renderMessages(data);
+
+            // Marquer les messages des créateurs comme lus
+            await sb
+                .from("messages")
+                .update({ read: true })
+                .eq("user_id", currentUserId)
+                .eq("creator", currentCreator)
+                .eq("sender", "admin")
+                .eq("read", false);
+
+            if (channel) {
+                sb.removeChannel(channel);
+            }
+
+            channel = sb
+                .channel("messages-" + currentUserId + "-" + currentCreator)
+                .on("postgres_changes", {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "messages",
+                    filter: `user_id=eq.${currentUserId}`
+                }, (payload) => {
+                    if (payload.new.creator === currentCreator) {
+                        appendMessage(payload.new);
+                        if (payload.new.sender === "admin") {
+                            sb.from("messages").update({ read: true }).eq("id", payload.new.id).then(() => {});
+                        }
+                    }
+                })
+                .subscribe();
+        }
+
+        function renderMessages(messages) {
+            const messagesEl = document.getElementById("chatMessages");
+
+            if (!messages || messages.length === 0) {
+                messagesEl.innerHTML = `<p class="empty-hint">Dis bonjour à ${creatorNames[currentCreator]} 👋</p>`;
+                return;
+            }
+
+            messagesEl.innerHTML = "";
+            messages.forEach(appendMessage);
+        }
+
+        function appendMessage(msg) {
+            const messagesEl = document.getElementById("chatMessages");
+            const hint = messagesEl.querySelector(".empty-hint");
+            if (hint) hint.remove();
+
+            const div = document.createElement("div");
+            div.className = "msg " + msg.sender;
+            div.textContent = msg.content;
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        document.getElementById("chatForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const input = document.getElementById("messageInput");
+            const content = input.value.trim();
+            if (!content) return;
+
+            input.value = "";
+
+            await sb.from("messages").insert({
+                user_id: currentUserId,
+                creator: currentCreator,
+                sender: "client",
+                content: content
+            });
+        });
+
+        document.getElementById("clearBtn").addEventListener("click", async () => {
+            if (!confirm("Effacer toute la conversation avec " + creatorNames[currentCreator] + " ? Cette action est irréversible.")) return;
+
+            await sb
+                .from("messages")
+                .delete()
+                .eq("user_id", currentUserId)
+                .eq("creator", currentCreator);
+
+            loadConversation();
+        });
+
+        (function () {
+            const toggle = document.getElementById('a11yToggle');
+            const panel = document.getElementById('a11yPanel');
+            const fontIncrease = document.getElementById('fontIncrease');
+            const fontDecrease = document.getElementById('fontDecrease');
+            const contrastToggle = document.getElementById('contrastToggle');
+
+            let fontSize = parseInt(localStorage.getItem('a11y-fontSize')) || 100;
+            let highContrast = localStorage.getItem('a11y-contrast') === 'true';
+
+            function applySettings() {
+                document.documentElement.style.fontSize = fontSize + '%';
+                document.body.classList.toggle('high-contrast', highContrast);
+            }
+            applySettings();
+
+            toggle.addEventListener('click', () => {
+                const isActive = panel.classList.toggle('active');
+                panel.setAttribute('aria-hidden', String(!isActive));
+            });
+
+            fontIncrease.addEventListener('click', () => {
+                fontSize = Math.min(fontSize + 10, 150);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            fontDecrease.addEventListener('click', () => {
+                fontSize = Math.max(fontSize - 10, 80);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            contrastToggle.addEventListener('click', () => {
+                highContrast = !highContrast;
+                localStorage.setItem('a11y-contrast', highContrast);
+                applySettings();
+            });
+        })();
+    </script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js").catch(() => {});
+        }
+    </script>
+</body>
+</html>
