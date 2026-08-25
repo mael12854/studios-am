@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de bord - Les studios a&amp;m</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1c1f26;
+            font-family: Arial, sans-serif;
+            color: #f0f0f0;
+            margin: 0;
+            padding: 1.5rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            margin: 0;
+        }
+
+        button {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: #6EA9FB;
+            color: #1c1f26;
+        }
+
+        .btn-primary:hover {
+            background-color: #5a94e0;
+        }
+
+        .btn-secondary {
+            background-color: #3a4150;
+            color: #f0f0f0;
+        }
+
+        .btn-secondary:hover {
+            background-color: #4a5164;
+        }
+
+        .btn-danger {
+            background-color: #e05a5a;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background-color: #c94848;
+        }
+
+        .btn-small {
+            padding: 0.35rem 0.7rem;
+            font-size: 0.85rem;
+        }
+
+        #formSection {
+            background: #262a33;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        #formSection.active {
+            display: block;
+        }
+
+        #formSection h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+            color: #ccc;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #1c1f26;
+            color: #f0f0f0;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #262a33;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #3a4150;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #1c1f26;
+            color: #999;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .badge-film {
+            background: #6EA9FB;
+            color: #1c1f26;
+        }
+
+        .badge-piece {
+            background: #f5c85a;
+            color: #1c1f26;
+        }
+
+        .badge-publie {
+            background: #5ad19a;
+            color: #1c1f26;
+        }
+
+        .badge-prevision {
+            background: #a9a9a9;
+            color: #1c1f26;
+        }
+
+        .views {
+            font-weight: bold;
+            color: #6EA9FB;
+        }
+
+        .actions-cell {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        #message {
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            min-height: 1.2rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+        }
+
+        @media (max-width: 700px) {
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead {
+                display: none;
+            }
+            td {
+                border-bottom: none;
+                padding: 0.4rem 1rem;
+            }
+            tr {
+                border-bottom: 1px solid #3a4150;
+                padding: 0.75rem 0;
+            }
+            td::before {
+                content: attr(data-label);
+                font-weight: bold;
+                color: #999;
+                display: block;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎬🎭 Tableau de bord — Les studios a&amp;m</h1>
+        <div style="display:flex; gap:0.75rem;">
+            <a class="btn-secondary" href="messages.html" style="text-decoration:none; display:inline-flex; align-items:center;">💬 Messages<span id="unreadBadge" style="display:none; background:#e05a5a; color:white; border-radius:10px; padding:0.1rem 0.5rem; font-size:0.75rem; margin-left:0.4rem;"></span></a>
+            <a class="btn-secondary" href="documents.html" style="text-decoration:none; display:inline-flex; align-items:center;">📄 Documents</a>
+            <button class="btn-primary" id="addBtn">+ Ajouter un article</button>
+            <button class="btn-secondary" id="logoutBtn">Se déconnecter</button>
+        </div>
+    </header>
+
+    <p id="message" aria-live="polite"></p>
+
+    <section id="formSection">
+        <h2 id="formTitle">Ajouter un article</h2>
+        <form id="articleForm">
+            <input type="hidden" id="articleId">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="category">Catégorie</label>
+                    <select id="category" required>
+                        <option value="film">Film</option>
+                        <option value="piece">Pièce de théâtre</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="status">Statut</label>
+                    <select id="status" required>
+                        <option value="publie">Publié (dans "Nos films" / "Nos pièces")</option>
+                        <option value="prevision">En prévision 🤫</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+                <label for="title">Titre</label>
+                <input id="title" type="text" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+                <label for="description">Description</label>
+                <textarea id="description"></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="image_url">Nom ou URL de l'image (optionnel)</label>
+                    <input id="image_url" type="text" placeholder="ex: miserables.png">
+                </div>
+                <div class="form-group">
+                    <label for="date_representation">Date de représentation (optionnel)</label>
+                    <input id="date_representation" type="text" placeholder="ex: Samedi 26 juin 2027">
+                </div>
+                <div class="form-group">
+                    <label for="prix">Prix (optionnel)</label>
+                    <input id="prix" type="text" placeholder="ex: 5,00 €">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary" id="saveBtn">Enregistrer</button>
+                <button type="button" class="btn-secondary" id="cancelBtn">Annuler</button>
+            </div>
+        </form>
+    </section>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Titre</th>
+                <th>Catégorie</th>
+                <th>Statut</th>
+                <th>Vues</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="articlesBody">
+            <tr><td colspan="5">Chargement...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const formSection = document.getElementById("formSection");
+        const form = document.getElementById("articleForm");
+        const messageEl = document.getElementById("message");
+
+        // Protection : redirige vers la connexion si pas de session, ou si pas admin
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+
+            if (!session) {
+                window.location.href = "index.html";
+                return;
+            }
+
+            const { data: isAdmin, error: adminCheckError } = await sb.rpc("is_admin");
+
+            if (adminCheckError || !isAdmin) {
+                await sb.auth.signOut();
+                messageEl.textContent = "⛔ Ce compte n'a pas accès au tableau de bord.";
+                setTimeout(() => {
+                    window.location.href = "index.html";
+                }, 2000);
+                return;
+            }
+
+            loadArticles();
+
+            const { count } = await sb
+                .from("messages")
+                .select("*", { count: "exact", head: true })
+                .eq("sender", "client")
+                .eq("read", false);
+
+            if (count > 0) {
+                const badge = document.getElementById("unreadBadge");
+                badge.textContent = count;
+                badge.style.display = "inline-block";
+            }
+        })();
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+            await sb.auth.signOut();
+            window.location.href = "index.html";
+        });
+
+        document.getElementById("addBtn").addEventListener("click", () => {
+            form.reset();
+            document.getElementById("articleId").value = "";
+            document.getElementById("formTitle").textContent = "Ajouter un article";
+            formSection.classList.add("active");
+        });
+
+        document.getElementById("cancelBtn").addEventListener("click", () => {
+            formSection.classList.remove("active");
+            form.reset();
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const id = document.getElementById("articleId").value;
+            const payload = {
+                category: document.getElementById("category").value,
+                status: document.getElementById("status").value,
+                title: document.getElementById("title").value.trim(),
+                description: document.getElementById("description").value.trim() || null,
+                image_url: document.getElementById("image_url").value.trim() || null,
+                date_representation: document.getElementById("date_representation").value.trim() || null,
+                prix: document.getElementById("prix").value.trim() || null
+            };
+
+            let error;
+            if (id) {
+                ({ error } = await sb.from("articles").update(payload).eq("id", id));
+            } else {
+                ({ error } = await sb.from("articles").insert(payload));
+            }
+
+            if (error) {
+                messageEl.textContent = "❌ Erreur : " + error.message;
+            } else {
+                messageEl.textContent = "✅ Article enregistré !";
+                formSection.classList.remove("active");
+                form.reset();
+                loadArticles();
+            }
+        });
+
+        async function loadArticles() {
+            const tbody = document.getElementById("articlesBody");
+
+            const { data, error } = await sb
+                .from("articles")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="5">⚠️ Erreur de chargement : ${error.message}</td></tr>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Aucun article pour l'instant. Clique sur "+ Ajouter un article" !</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(article => `
+                <tr>
+                    <td data-label="Titre">${article.title}</td>
+                    <td data-label="Catégorie"><span class="badge badge-${article.category}">${article.category === "film" ? "Film" : "Pièce"}</span></td>
+                    <td data-label="Statut"><span class="badge badge-${article.status}">${article.status === "publie" ? "Publié" : "En prévision"}</span></td>
+                    <td data-label="Vues"><span class="views">👁 ${article.views}</span></td>
+                    <td data-label="Actions" class="actions-cell">
+                        <button class="btn-secondary btn-small" onclick='editArticle(${JSON.stringify(article)})'>Modifier</button>
+                        <button class="btn-danger btn-small" onclick="deleteArticle('${article.id}')">Supprimer</button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function editArticle(article) {
+            document.getElementById("articleId").value = article.id;
+            document.getElementById("category").value = article.category;
+            document.getElementById("status").value = article.status;
+            document.getElementById("title").value = article.title;
+            document.getElementById("description").value = article.description || "";
+            document.getElementById("image_url").value = article.image_url || "";
+            document.getElementById("date_representation").value = article.date_representation || "";
+            document.getElementById("prix").value = article.prix || "";
+            document.getElementById("formTitle").textContent = "Modifier l'article";
+            formSection.classList.add("active");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        async function deleteArticle(id) {
+            if (!confirm("Supprimer définitivement cet article ?")) return;
+
+            const { error } = await sb.from("articles").delete().eq("id", id);
+
+            if (error) {
+                messageEl.textContent = "❌ Erreur : " + error.message;
+            } else {
+                messageEl.textContent = "🗑️ Article supprimé.";
+                loadArticles();
+            }
+        }
+    </script>
+</body>
+</html>
