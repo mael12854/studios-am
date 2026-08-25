@@ -1,0 +1,7 @@
+{
+  "redirects": [
+    { "source": "/dashboard.html", "destination": "/admin/dashboard.html", "permanent": false },
+    { "source": "/documents.html", "destination": "/admin/documents.html", "permanent": false },
+    { "source": "/messages.html", "destination": "/admin/messages.html", "permanent": false }
+  ]
+}
