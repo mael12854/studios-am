@@ -4,109 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Les studios a&amp;m</title>
-    <link rel="icon" type="image/png" href="icon-192.png">
-    <link rel="shortcut icon" type="image/png" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6EA9FB">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#F6F1E5">
+    <link rel="apple-touch-icon" href="icon-192-lumiere.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brand.css">
     <style>
         body {
-            background-color: #6EA9FB; /* Votre Couleur */
-            font-family: Arial, sans-serif;
             text-align: center;
-            margin: 0;
-            padding: 2rem;
+            padding: 3rem 2rem;
         }
 
-        img {
+        img.mark {
             width: 180px;
-            height: auto;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-
-        a {
-            display: inline-block;
-            margin-top: 1rem;
-            padding: 0.6rem 1.2rem;
-            background-color: #ffffff;
-            color: #333;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-        }
-
-        a:hover {
-            background-color: #e0e0e0;
-        }
-
-        #a11y-widget {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 1000;
-            text-align: left;
-        }
-
-        #a11yToggle {
-            width: 44px;
-            height: 44px;
+            height: 180px;
             border-radius: 50%;
-            border: none;
-            background: #ffffff;
-            font-size: 1.3rem;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-
-        #a11yPanel {
-            display: none;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-            background: white;
-            padding: 0.75rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            width: 160px;
-        }
-
-        #a11yPanel.active {
-            display: flex;
-        }
-
-        #a11yPanel button {
-            padding: 0.4rem 0.6rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            background: #f5f5f5;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        #a11yPanel button:hover {
-            background: #e0e0e0;
-        }
-
-        body.high-contrast {
-            background-color: #000000 !important;
-            color: #ffffff !important;
-        }
-
-        body.high-contrast a,
-        body.high-contrast button {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            border: 2px solid #ffffff !important;
+            object-fit: cover;
+            box-shadow: var(--shadow-sm);
+            margin: 1rem 0;
         }
     </style>
 </head>
 <body>
-    <h1>Bonjour !!!</h1>
+    <h1>Bonjour.</h1>
 
-    <img src="unnamed.jpg" alt="Image de présentation des studios a&m">
+    <img class="mark" src="icon-512-lumiere.png" alt="Image de présentation des studios a&amp;m">
 
-    <a href="page_de_connexion.html">Connexion</a>
+    <div>
+        <a class="btn btn-primary" href="page_de_connexion.html">Connexion</a>
+    </div>
 
     <div id="a11y-widget">
         <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>

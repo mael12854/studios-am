@@ -1,0 +1,302 @@
+/* Charte de marque A&M — tokens & composants partagés.
+   Voir la charte : https://claude.ai/code/artifact/9fa0844a-8a14-48a1-bb67-3a7c64b86614 */
+
+:root {
+    --bg: #F6F1E5;
+    --surface: #FCFAF3;
+    --surface-alt: #ECE1CB;
+    --line: #DCD0B7;
+    --ink: #38332A;
+    --ink-muted: #726A59;
+    --metal: #A29C8E;
+    --metal-strong: #6E695E;
+    --gold: #A9803F;
+    --sage: #7C8A61;
+    --danger: #B65A45;
+    --radius-sm: 2px;
+    --radius-md: 3px;
+    --shadow-sm: 0 1px 2px rgba(56,51,42,.06), 0 8px 24px rgba(56,51,42,.06);
+    --shadow-md: 0 2px 4px rgba(56,51,42,.09), 0 16px 32px rgba(56,51,42,.10);
+    --font-display: "Cinzel", Georgia, serif;
+    --font-body: "EB Garamond", Georgia, "Times New Roman", serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Nuit — espace admin. Poser data-theme="nuit" sur <html>. */
+[data-theme="nuit"] {
+    --bg: #161513;
+    --surface: #1F1D19;
+    --surface-alt: #2A2723;
+    --line: #3A3630;
+    --ink: #ECE6D8;
+    --ink-muted: #A79E8B;
+    --metal: #C7C2B3;
+    --metal-strong: #DAD5C6;
+    --gold: #C8A467;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.35);
+    --shadow-md: 0 2px 4px rgba(0,0,0,.35), 0 16px 32px rgba(0,0,0,.4);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    margin: 0;
+    padding: 2rem;
+}
+
+h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: .03em;
+    margin: 0 0 .75rem;
+}
+
+a { color: var(--gold); }
+
+.eyebrow {
+    font-variant-caps: small-caps;
+    font-feature-settings: "smcp" 1, "c2sc" 1;
+    letter-spacing: .1em;
+    color: var(--ink-muted);
+}
+
+.page-logo {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ---- buttons & links styled as buttons ---- */
+.btn, nav.site-nav a, a.back, button {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-variant-caps: small-caps;
+    font-feature-settings: "smcp" 1, "c2sc" 1;
+    letter-spacing: .04em;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: .6rem 1.2rem;
+    border: 1px solid var(--metal);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ink);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.btn:hover, nav.site-nav a:hover, a.back:hover, button:hover {
+    background-color: var(--surface-alt);
+}
+
+.btn-primary, button[type="submit"], nav.site-nav a.primary {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+}
+
+.btn-primary:hover, button[type="submit"]:hover, nav.site-nav a.primary:hover {
+    background: var(--metal-strong);
+    border-color: var(--metal-strong);
+}
+
+button:disabled {
+    background: var(--surface-alt);
+    color: var(--ink-muted);
+    border-color: var(--line);
+    cursor: not-allowed;
+}
+
+/* ---- nav ---- */
+nav.site-nav {
+    display: flex;
+    justify-content: center;
+    gap: .75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+/* ---- cards ---- */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    text-align: left;
+}
+
+/* ---- badges ---- */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    border: 1px solid var(--metal);
+    border-radius: 20px;
+    padding: .2rem .7rem;
+    font-family: var(--font-body);
+    font-variant-caps: small-caps;
+    font-feature-settings: "smcp" 1;
+    font-size: .9rem;
+    color: var(--ink);
+}
+
+.badge .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--sage);
+    flex: none;
+}
+
+.badge.prevision .dot { background: var(--gold); }
+
+/* ---- forms ---- */
+label {
+    display: block;
+    font-variant-caps: small-caps;
+    font-feature-settings: "smcp" 1;
+    font-size: .95rem;
+    color: var(--ink-muted);
+    margin-bottom: .3rem;
+    text-align: left;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: .6rem .75rem;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+    border: 1px solid var(--metal);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 1rem;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 1px var(--gold);
+}
+
+/* ---- chat bubbles ---- */
+.msg {
+    max-width: 75%;
+    padding: .6rem .9rem;
+    border-radius: 12px;
+    font-size: .92rem;
+    line-height: 1.5;
+}
+
+.msg.client {
+    align-self: flex-end;
+    background: var(--ink);
+    color: var(--bg);
+    border-bottom-right-radius: 2px;
+}
+
+.msg.admin {
+    align-self: flex-start;
+    background: var(--surface-alt);
+    color: var(--ink);
+    border-bottom-left-radius: 2px;
+}
+
+/* ---- accessibility widget (kept functional, not decorative) ---- */
+#a11y-widget {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1000;
+    text-align: left;
+}
+
+#a11yToggle {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    border-radius: 50%;
+    border: 1px solid var(--metal);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+#a11yPanel {
+    display: none;
+    flex-direction: column;
+    gap: .5rem;
+    margin-top: .5rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: .75rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    width: 170px;
+}
+
+#a11yPanel.active { display: flex; }
+
+#a11yPanel button {
+    padding: .4rem .6rem;
+    font-size: .85rem;
+}
+
+body.high-contrast {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+body.high-contrast a,
+body.high-contrast button,
+body.high-contrast .btn {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #ffffff !important;
+}
+
+body.high-contrast .card,
+body.high-contrast .chat-box,
+body.high-contrast .doc-card,
+body.high-contrast .film-card {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
+}
+
+/* ---- misc ---- */
+.empty-hint {
+    color: var(--ink-muted);
+    text-align: center;
+    font-size: .9rem;
+}
+
+.hr-motif {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    max-width: 20rem;
+    margin: 1rem auto;
+}
+.hr-motif::before, .hr-motif::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+}
+.hr-motif .dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--metal);
+    flex: none;
+}

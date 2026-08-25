@@ -4,60 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirmation - Les studios a&amp;m</title>
-    <link rel="icon" type="image/png" href="icon-192.png">
-    <link rel="shortcut icon" type="image/png" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6EA9FB">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#F6F1E5">
+    <link rel="apple-touch-icon" href="icon-192-lumiere.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
-            background-color: #6EA9FB; /* Votre Couleur */
-            font-family: Arial, sans-serif;
             text-align: center;
-            margin: 0;
-            padding: 2rem;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .box {
-            background: white;
-            max-width: 350px;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        }
+        .box { max-width: 350px; }
 
-        img {
-            width: 120px;
-            height: auto;
-            border-radius: 8px;
+        .box img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: var(--shadow-sm);
             margin-bottom: 1rem;
-        }
-
-        a.button {
-            display: inline-block;
-            margin-top: 1rem;
-            padding: 0.6rem 1.2rem;
-            background-color: #6EA9FB;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-        }
-
-        a.button:hover {
-            background-color: #5a94e0;
         }
     </style>
 </head>
 <body>
-    <div class="box">
-        <img src="unnamed.jpg" alt="Logo des studios a&m">
-        <p id="message">Confirmation en cours...</p>
+    <div class="box card">
+        <img src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
+        <p id="message">Confirmation en cours…</p>
     </div>
 
     <script>
@@ -72,7 +53,7 @@
             const messageEl = document.getElementById("message");
 
             if (!token_hash) {
-                messageEl.innerHTML = "❌ Lien invalide ou incomplet (paramètre manquant).";
+                messageEl.textContent = "Lien invalide ou incomplet (paramètre manquant).";
                 return;
             }
 
@@ -80,15 +61,21 @@
                 const { data, error } = await sb.auth.verifyOtp({ token_hash, type });
 
                 if (error) {
-                    messageEl.innerHTML = "❌ " + error.message + "<br><a class='button' href='page_de_connexion.html'>Se connecter</a>";
+                    messageEl.innerHTML = escapeHtml(error.message) + "<br><a class='btn btn-primary' href='page_de_connexion.html'>Se connecter</a>";
                 } else {
                     const email = data?.user?.email || "";
-                    messageEl.innerHTML = `✅ Bienvenue parmi nous${email ? " " + email : ""} !<br><a class='button' href='accueil.html'>Continuer</a>`;
+                    messageEl.innerHTML = `Bienvenue parmi nous${email ? " " + escapeHtml(email) : ""}.<br><a class='btn btn-primary' href='accueil.html'>Continuer</a>`;
                 }
             } catch (err) {
-                messageEl.innerHTML = "⚠️ Erreur inattendue : " + err.message;
+                messageEl.textContent = "Erreur inattendue : " + err.message;
             }
         })();
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
     </script>
     <script>
         if ("serviceWorker" in navigator) {

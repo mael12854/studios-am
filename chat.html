@@ -4,16 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discuter avec les créateurs - Les studios a&amp;m</title>
-    <link rel="icon" type="image/png" href="icon-192.png">
-    <link rel="shortcut icon" type="image/png" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6EA9FB">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#F6F1E5">
+    <link rel="apple-touch-icon" href="icon-192-lumiere.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
-            background-color: #6EA9FB; /* Votre Couleur */
-            font-family: Arial, sans-serif;
             margin: 0;
             padding: 2rem;
             display: flex;
@@ -21,38 +23,31 @@
             align-items: center;
         }
 
-        h1 {
-            color: white;
-            text-align: center;
-        }
+        h1 { text-align: center; }
 
         .creator-tabs {
             display: flex;
-            gap: 1rem;
+            gap: .75rem;
             margin-bottom: 1.5rem;
         }
 
         .creator-tab {
-            padding: 0.7rem 1.4rem;
-            background: rgba(255,255,255,0.7);
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.95rem;
+            padding: .6rem 1.2rem;
         }
 
         .creator-tab.active {
-            background: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: var(--ink);
+            color: var(--bg);
+            border-color: var(--ink);
         }
 
         .chat-box {
-            background: white;
+            background: var(--surface);
+            border: 1px solid var(--line);
             width: 100%;
             max-width: 480px;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
             display: flex;
             flex-direction: column;
             height: 60vh;
@@ -61,10 +56,21 @@
 
         .chat-header {
             padding: 1rem;
-            background: #f5f7fa;
-            border-bottom: 1px solid #eaeef2;
-            font-weight: bold;
+            background: var(--surface-alt);
+            border-bottom: 1px solid var(--line);
+            font-weight: 600;
             text-align: center;
+        }
+
+        .chat-header .clear-link {
+            float: right;
+            background: none;
+            border: none;
+            color: var(--danger);
+            font-size: .8rem;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0;
         }
 
         .chat-messages {
@@ -73,150 +79,33 @@
             padding: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 0.6rem;
-        }
-
-        .msg {
-            max-width: 75%;
-            padding: 0.6rem 0.9rem;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-
-        .msg.client {
-            align-self: flex-end;
-            background: #6EA9FB;
-            color: white;
-            border-bottom-right-radius: 2px;
-        }
-
-        .msg.admin {
-            align-self: flex-start;
-            background: #eef1f5;
-            color: #333;
-            border-bottom-left-radius: 2px;
+            gap: .6rem;
         }
 
         .chat-form {
             display: flex;
-            border-top: 1px solid #eaeef2;
+            border-top: 1px solid var(--line);
         }
 
         .chat-form input {
             flex: 1;
             border: none;
-            padding: 0.8rem;
-            font-size: 0.9rem;
+            border-radius: 0;
+            padding: .8rem;
+            margin: 0;
         }
 
-        .chat-form input:focus {
-            outline: none;
-        }
+        .chat-form input:focus { box-shadow: none; }
 
         .chat-form button {
             border: none;
-            background: #6EA9FB;
-            color: white;
+            border-radius: 0;
+            background: var(--ink);
+            color: var(--bg);
             padding: 0 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
         }
 
-        .chat-form button:hover {
-            background: #5a94e0;
-        }
-
-        a.back {
-            display: inline-block;
-            margin-top: 1.5rem;
-            padding: 0.6rem 1.2rem;
-            background-color: #ffffff;
-            color: #333;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-        }
-
-        a.back:hover {
-            background-color: #e0e0e0;
-        }
-
-        .empty-hint {
-            color: #999;
-            text-align: center;
-            font-size: 0.85rem;
-            margin-top: 1rem;
-        }
-
-        #a11y-widget {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 1000;
-            text-align: left;
-        }
-
-        #a11yToggle {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            border: none;
-            background: #ffffff;
-            font-size: 1.3rem;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-
-        #a11yPanel {
-            display: none;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-            background: white;
-            padding: 0.75rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            width: 160px;
-        }
-
-        #a11yPanel.active {
-            display: flex;
-        }
-
-        #a11yPanel button {
-            padding: 0.4rem 0.6rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            background: #f5f5f5;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        #a11yPanel button:hover {
-            background: #e0e0e0;
-        }
-
-        body.high-contrast {
-            background-color: #000000 !important;
-            color: #ffffff !important;
-        }
-
-        body.high-contrast a,
-        body.high-contrast button {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            border: 2px solid #ffffff !important;
-        }
-
-        body.high-contrast .chat-box {
-            background-color: #1a1a1a !important;
-        }
-
-        body.high-contrast .chat-header {
-            background-color: #262a33 !important;
-            color: #ffffff !important;
-        }
+        .chat-form button:hover { background: var(--metal-strong); }
 
         body.high-contrast .msg.admin {
             background-color: #333 !important;
@@ -225,17 +114,17 @@
     </style>
 </head>
 <body>
-    <h1>💬 Discuter avec les créateurs</h1>
+    <h1>Discuter avec les créateurs</h1>
 
     <div class="creator-tabs">
-        <button class="creator-tab active" id="tabMael" onclick="selectCreator('mael')">🎬 Maël Domenech</button>
-        <button class="creator-tab" id="tabAbel" onclick="selectCreator('abel')">🎭 Abel Burkard</button>
+        <button class="creator-tab btn active" id="tabMael" onclick="selectCreator('mael')">Maël Domenech</button>
+        <button class="creator-tab btn" id="tabAbel" onclick="selectCreator('abel')">Abel Burkard</button>
     </div>
 
     <div class="chat-box">
         <div class="chat-header">
             <span id="chatHeader">Conversation avec Maël Domenech</span>
-            <button id="clearBtn" style="float:right; background:none; border:none; color:#c94848; font-size:0.8rem; cursor:pointer; font-weight:bold;">🗑️ Effacer</button>
+            <button class="clear-link" id="clearBtn">Effacer</button>
         </div>
         <div class="chat-messages" id="chatMessages">
             <p class="empty-hint">Chargement...</p>
@@ -246,7 +135,7 @@
         </form>
     </div>
 
-    <a class="back" href="accueil.html">Retour à l'accueil</a>
+    <a class="btn back" href="accueil.html">Retour à l'accueil</a>
 
     <div id="a11y-widget">
         <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
@@ -299,7 +188,7 @@
                 .order("created_at", { ascending: true });
 
             if (error) {
-                messagesEl.innerHTML = "<p class='empty-hint'>⚠️ Impossible de charger la conversation.</p>";
+                messagesEl.innerHTML = "<p class='empty-hint'>Impossible de charger la conversation.</p>";
                 return;
             }
 
@@ -340,7 +229,11 @@
             const messagesEl = document.getElementById("chatMessages");
 
             if (!messages || messages.length === 0) {
-                messagesEl.innerHTML = `<p class="empty-hint">Dis bonjour à ${creatorNames[currentCreator]} 👋</p>`;
+                const p = document.createElement("p");
+                p.className = "empty-hint";
+                p.textContent = "Dis bonjour à " + creatorNames[currentCreator];
+                messagesEl.innerHTML = "";
+                messagesEl.appendChild(p);
                 return;
             }
 
