@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Messages - Les studios a&amp;m</title>
+    <link rel="icon" type="image/jpeg" href="../unnamed.jpg">
+    <link rel="apple-touch-icon" href="../icon-192.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
@@ -210,6 +212,12 @@
         let currentConversation = null; // { userId, creator, email }
         let channel = null;
 
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
         (async () => {
             const { data: { session } } = await sb.auth.getSession();
             if (!session) { window.location.href = "index.html"; return; }
@@ -262,9 +270,9 @@
 
             listEl.innerHTML = conversations.map(conv => `
                 <div class="conversation-item" data-user="${conv.userId}" data-creator="${conv.creator}">
-                    <div class="email">${emailMap[conv.userId] || conv.userId}</div>
+                    <div class="email">${escapeHtml(emailMap[conv.userId] || conv.userId)}</div>
                     <span class="creator-badge">${creatorNames[conv.creator]}</span>
-                    <div class="preview">${conv.lastMessage}</div>
+                    <div class="preview">${escapeHtml(conv.lastMessage)}</div>
                 </div>
             `).join("");
 

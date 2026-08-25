@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tableau de bord - Les studios a&amp;m</title>
+    <link rel="icon" type="image/jpeg" href="../unnamed.jpg">
+    <link rel="apple-touch-icon" href="../icon-192.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
@@ -318,6 +320,14 @@
         const form = document.getElementById("articleForm");
         const messageEl = document.getElementById("message");
 
+        let currentArticles = [];
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
         // Protection : redirige vers la connexion si pas de session, ou si pas admin
         (async () => {
             const { data: { session } } = await sb.auth.getSession();
@@ -419,18 +429,27 @@
                 return;
             }
 
+            currentArticles = data;
+
             tbody.innerHTML = data.map(article => `
                 <tr>
-                    <td data-label="Titre">${article.title}</td>
+                    <td data-label="Titre">${escapeHtml(article.title)}</td>
                     <td data-label="Catégorie"><span class="badge badge-${article.category}">${article.category === "film" ? "Film" : "Pièce"}</span></td>
                     <td data-label="Statut"><span class="badge badge-${article.status}">${article.status === "publie" ? "Publié" : "En prévision"}</span></td>
                     <td data-label="Vues"><span class="views">👁 ${article.views}</span></td>
                     <td data-label="Actions" class="actions-cell">
-                        <button class="btn-secondary btn-small" onclick='editArticle(${JSON.stringify(article)})'>Modifier</button>
-                        <button class="btn-danger btn-small" onclick="deleteArticle('${article.id}')">Supprimer</button>
+                        <button class="btn-secondary btn-small" data-action="edit" data-id="${article.id}">Modifier</button>
+                        <button class="btn-danger btn-small" data-action="delete" data-id="${article.id}">Supprimer</button>
                     </td>
                 </tr>
             `).join("");
+
+            tbody.querySelectorAll("[data-action='edit']").forEach(btn => {
+                btn.addEventListener("click", () => editArticle(currentArticles.find(a => a.id === btn.dataset.id)));
+            });
+            tbody.querySelectorAll("[data-action='delete']").forEach(btn => {
+                btn.addEventListener("click", () => deleteArticle(btn.dataset.id));
+            });
         }
 
         function editArticle(article) {

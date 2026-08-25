@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Documents - Les studios a&amp;m</title>
+    <link rel="icon" type="image/jpeg" href="../unnamed.jpg">
+    <link rel="apple-touch-icon" href="../icon-192.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
@@ -222,6 +224,14 @@
         const form = document.getElementById("docForm");
         const messageEl = document.getElementById("message");
 
+        let currentDocs = [];
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
         (async () => {
             const { data: { session } } = await sb.auth.getSession();
             if (!session) { window.location.href = "index.html"; return; }
@@ -289,16 +299,25 @@
                 return;
             }
 
+            currentDocs = data;
+
             tbody.innerHTML = data.map(doc => `
                 <tr>
-                    <td>${doc.title}</td>
-                    <td>${doc.file_name}</td>
+                    <td>${escapeHtml(doc.title)}</td>
+                    <td>${escapeHtml(doc.file_name)}</td>
                     <td class="actions-cell">
-                        <button class="btn-secondary btn-small" onclick='editDoc(${JSON.stringify(doc)})'>Modifier</button>
-                        <button class="btn-danger btn-small" onclick="deleteDoc('${doc.id}')">Supprimer</button>
+                        <button class="btn-secondary btn-small" data-action="edit" data-id="${doc.id}">Modifier</button>
+                        <button class="btn-danger btn-small" data-action="delete" data-id="${doc.id}">Supprimer</button>
                     </td>
                 </tr>
             `).join("");
+
+            tbody.querySelectorAll("[data-action='edit']").forEach(btn => {
+                btn.addEventListener("click", () => editDoc(currentDocs.find(d => d.id === btn.dataset.id)));
+            });
+            tbody.querySelectorAll("[data-action='delete']").forEach(btn => {
+                btn.addEventListener("click", () => deleteDoc(btn.dataset.id));
+            });
         }
 
         function editDoc(doc) {
