@@ -19,32 +19,26 @@
 
         .page-logo { margin: 0 auto 1rem; }
 
-        #loginBox {
-            position: fixed;
-            top: -400px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 300px;
-            padding: 1.5rem;
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-md);
-            transition: top 0.5s;
+        .login-box {
+            max-width: 320px;
+            margin: 1rem auto;
         }
 
-        #loginBox.active { top: 50px; }
+        .login-box h1 {
+            font-size: 1.3rem;
+            text-align: center;
+        }
 
-        #loginBox h3 { text-align: center; }
-
-        #loginBox .signup-link {
+        .signup-link {
             font-size: 0.85rem;
-            margin-top: 0.5rem;
+            text-align: center;
+            margin-top: 1rem;
         }
 
         #message {
             font-size: 0.9rem;
             min-height: 1.2rem;
+            text-align: center;
         }
     </style>
 </head>
@@ -52,12 +46,8 @@
 
     <img class="page-logo" src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
 
-    <div>
-        <button class="btn btn-primary" onclick="toggleLogin()">Se connecter</button>
-    </div>
-
-    <div id="loginBox">
-        <h3>Connexion</h3>
+    <div class="login-box card">
+        <h1>Connexion</h1>
 
         <form id="loginForm">
             <label for="email">Email</label>
@@ -66,7 +56,7 @@
             <label for="password">Mot de passe</label>
             <input id="password" type="password" autocomplete="current-password" required>
 
-            <button type="submit" id="submitBtn">Valider</button>
+            <button type="submit" id="submitBtn" class="btn-primary">Se connecter</button>
         </form>
 
         <p id="message" aria-live="polite"></p>
@@ -87,10 +77,6 @@
         const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        function toggleLogin() {
-            document.getElementById("loginBox").classList.toggle("active");
-        }
 
         // Si déjà connecté, aller directement à l'accueil
         (async () => {
@@ -117,7 +103,7 @@
                 messageEl.textContent = error.message === "Invalid login credentials" ? "Identifiants incorrects." : error.message;
                 passwordEl.value = "";
                 submitBtn.disabled = false;
-                submitBtn.textContent = "Valider";
+                submitBtn.textContent = "Se connecter";
             } else {
                 window.location.href = "accueil.html";
             }
