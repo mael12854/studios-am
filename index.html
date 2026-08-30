@@ -16,7 +16,33 @@
     <style>
         body {
             text-align: center;
-            padding: 3rem 2rem;
+            padding: 4rem 2rem;
+        }
+
+        .wordmark {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 7vw, 3.2rem);
+            letter-spacing: .07em;
+            margin: 0;
+        }
+
+        .wordmark .amp { color: var(--gold); }
+
+        .tagline {
+            font-variant-caps: small-caps;
+            font-feature-settings: "smcp" 1, "c2sc" 1;
+            letter-spacing: .06em;
+            font-size: 1.3rem;
+            margin: 1rem 0 .25rem;
+        }
+
+        .names {
+            font-variant-caps: small-caps;
+            font-feature-settings: "smcp" 1, "c2sc" 1;
+            letter-spacing: .06em;
+            font-size: 1rem;
+            color: var(--ink-muted);
+            margin: 0 0 2rem;
         }
 
         img.mark {
@@ -30,7 +56,9 @@
     </style>
 </head>
 <body>
-    <h1>Bonjour.</h1>
+    <h1 class="wordmark">A<span class="amp">&amp;</span>M STUDIOS</h1>
+    <p class="tagline">Production · Cinéma · Théâtre</p>
+    <p class="names">Abel · Maël · Martin · Maya</p>
 
     <img class="mark" src="icon-512-lumiere.png" alt="Image de présentation des studios a&amp;m">
 
