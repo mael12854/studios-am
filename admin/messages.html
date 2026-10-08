@@ -223,15 +223,22 @@
 
             const conversations = Object.values(grouped);
 
-            // Récupère les emails des utilisateurs concernés
+            // Récupère les profils (nom/prénom/email) des utilisateurs concernés
             const userIds = [...new Set(conversations.map(c => c.userId))];
-            const { data: usersData } = await sb.rpc("get_user_emails", { user_ids: userIds });
-            const emailMap = {};
-            (usersData || []).forEach(u => { emailMap[u.id] = u.email; });
+            const { data: usersData } = await sb.rpc("get_user_profiles", { user_ids: userIds });
+            const profileMap = {};
+            (usersData || []).forEach(u => { profileMap[u.id] = u; });
+
+            function displayName(userId) {
+                const u = profileMap[userId];
+                if (!u) return userId;
+                if (u.prenom && u.nom) return `${u.prenom} ${u.nom}`;
+                return u.email || userId;
+            }
 
             listEl.innerHTML = conversations.map(conv => `
                 <div class="conversation-item" data-user="${conv.userId}" data-creator="${conv.creator}">
-                    <div class="email">${escapeHtml(emailMap[conv.userId] || conv.userId)}</div>
+                    <div class="email">${escapeHtml(displayName(conv.userId))}</div>
                     <span class="creator-badge">${creatorNames[conv.creator]}</span>
                     <div class="preview">${escapeHtml(conv.lastMessage)}</div>
                 </div>
@@ -241,7 +248,7 @@
                 el.addEventListener("click", () => {
                     listEl.querySelectorAll(".conversation-item").forEach(x => x.classList.remove("active"));
                     el.classList.add("active");
-                    openConversation(el.dataset.user, el.dataset.creator, emailMap[el.dataset.user] || el.dataset.user);
+                    openConversation(el.dataset.user, el.dataset.creator, displayName(el.dataset.user));
                 });
             });
         }

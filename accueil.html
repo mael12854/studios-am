@@ -77,7 +77,8 @@
                 return;
             }
 
-            document.getElementById("welcome").innerText = "Bienvenue " + session.user.email;
+            const prenom = session.user.user_metadata?.prenom;
+            document.getElementById("welcome").innerText = "Bienvenue " + (prenom || session.user.email);
 
             const { count } = await sb
                 .from("messages")

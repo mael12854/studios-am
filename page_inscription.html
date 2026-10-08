@@ -49,6 +49,12 @@
         <h1>Créer un compte</h1>
 
         <form id="signupForm">
+            <label for="prenom">Prénom</label>
+            <input id="prenom" type="text" autocomplete="given-name" required>
+
+            <label for="nom">Nom</label>
+            <input id="nom" type="text" autocomplete="family-name" required>
+
             <label for="email">Email</label>
             <input id="email" type="email" autocomplete="username" required>
 
@@ -71,6 +77,8 @@
         document.getElementById("signupForm").addEventListener("submit", async (event) => {
             event.preventDefault();
 
+            const prenom = document.getElementById("prenom").value.trim();
+            const nom = document.getElementById("nom").value.trim();
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
             const messageEl = document.getElementById("message");
@@ -80,7 +88,11 @@
             submitBtn.textContent = "Création...";
             messageEl.textContent = "";
 
-            const { data, error } = await sb.auth.signUp({ email, password });
+            const { data, error } = await sb.auth.signUp({
+                email,
+                password,
+                options: { data: { prenom, nom } },
+            });
 
             if (error) {
                 messageEl.textContent = error.message || "Une erreur est survenue côté serveur (envoi de l'email). Réessaie dans un instant.";
