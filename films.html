@@ -102,6 +102,7 @@
                     <p>${film.description ? escapeHtml(film.description) : ""}</p>
                     ${film.date_representation ? `<p><strong>Date :</strong> ${escapeHtml(film.date_representation)}</p>` : ""}
                     ${film.prix ? `<p><strong>${escapeHtml(film.prix)}</strong> la place</p>` : ""}
+                    ${film.trailer_url ? `<a class="btn" href="cellule_cinema.html?id=${encodeURIComponent(film.id)}">Bande-Annonce</a>` : ""}
                 </div>
             `).join("");
 

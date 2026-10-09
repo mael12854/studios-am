@@ -188,6 +188,12 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label for="trailer_file">Bande-annonce — fichier vidéo (optionnel, .mp4/.webm/.mov, 200 Mo max)</label>
+                <input id="trailer_file" type="file" accept="video/mp4,video/webm,video/quicktime">
+                <p id="trailerCurrent" class="small-muted" style="display:none; margin: .3rem 0 0; font-size: .85rem; color: var(--ink-muted);"></p>
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="btn-primary" id="saveBtn">Enregistrer</button>
                 <button type="button" class="btn" id="cancelBtn">Annuler</button>
@@ -271,6 +277,7 @@
             form.reset();
             document.getElementById("articleId").value = "";
             document.getElementById("formTitle").textContent = "Ajouter un article";
+            document.getElementById("trailerCurrent").style.display = "none";
             formSection.classList.add("active");
         });
 
@@ -279,10 +286,25 @@
             form.reset();
         });
 
+        async function uploadTrailer(file) {
+            const ext = file.name.split(".").pop();
+            const path = `trailer-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+            const { error } = await sb.storage.from("trailers").upload(path, file);
+            if (error) throw error;
+
+            const { data } = sb.storage.from("trailers").getPublicUrl(path);
+            return data.publicUrl;
+        }
+
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
 
             const id = document.getElementById("articleId").value;
+            const existing = id ? currentArticles.find(a => a.id === id) : null;
+            const trailerFile = document.getElementById("trailer_file").files[0];
+            const saveBtn = document.getElementById("saveBtn");
+
             const payload = {
                 category: document.getElementById("category").value,
                 status: document.getElementById("status").value,
@@ -292,6 +314,23 @@
                 date_representation: document.getElementById("date_representation").value.trim() || null,
                 prix: document.getElementById("prix").value.trim() || null
             };
+
+            if (trailerFile) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = "Envoi de la vidéo...";
+                try {
+                    payload.trailer_url = await uploadTrailer(trailerFile);
+                } catch (uploadError) {
+                    messageEl.textContent = "Erreur lors de l'envoi de la bande-annonce : " + uploadError.message;
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = "Enregistrer";
+                    return;
+                }
+                saveBtn.textContent = "Enregistrer";
+                saveBtn.disabled = false;
+            } else if (existing) {
+                payload.trailer_url = existing.trailer_url || null;
+            }
 
             let error;
             if (id) {
@@ -364,6 +403,14 @@
             document.getElementById("image_url").value = article.image_url || "";
             document.getElementById("date_representation").value = article.date_representation || "";
             document.getElementById("prix").value = article.prix || "";
+            document.getElementById("trailer_file").value = "";
+            const trailerCurrent = document.getElementById("trailerCurrent");
+            if (article.trailer_url) {
+                trailerCurrent.textContent = "Une bande-annonce est déjà en ligne. Choisis un fichier pour la remplacer.";
+                trailerCurrent.style.display = "block";
+            } else {
+                trailerCurrent.style.display = "none";
+            }
             document.getElementById("formTitle").textContent = "Modifier l'article";
             formSection.classList.add("active");
             window.scrollTo({ top: 0, behavior: "smooth" });
