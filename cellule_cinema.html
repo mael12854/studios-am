@@ -62,7 +62,6 @@
         <div id="a11yPanel" aria-hidden="true">
             <button id="fontIncrease" aria-label="Agrandir le texte">A+</button>
             <button id="fontDecrease" aria-label="Réduire le texte">A-</button>
-            <button id="contrastToggle" aria-label="Activer le contraste élevé">Contraste élevé</button>
         </div>
     </div>
 
@@ -120,14 +119,12 @@
             const panel = document.getElementById('a11yPanel');
             const fontIncrease = document.getElementById('fontIncrease');
             const fontDecrease = document.getElementById('fontDecrease');
-            const contrastToggle = document.getElementById('contrastToggle');
 
             let fontSize = parseInt(localStorage.getItem('a11y-fontSize')) || 100;
-            let highContrast = localStorage.getItem('a11y-contrast') === 'true';
 
+            // Pas de contraste élevé ici : la page est déjà en thème sombre (Nuit).
             function applySettings() {
                 document.documentElement.style.fontSize = fontSize + '%';
-                document.body.classList.toggle('high-contrast', highContrast);
             }
             applySettings();
 
@@ -145,12 +142,6 @@
             fontDecrease.addEventListener('click', () => {
                 fontSize = Math.max(fontSize - 10, 80);
                 localStorage.setItem('a11y-fontSize', fontSize);
-                applySettings();
-            });
-
-            contrastToggle.addEventListener('click', () => {
-                highContrast = !highContrast;
-                localStorage.setItem('a11y-contrast', highContrast);
                 applySettings();
             });
         })();
