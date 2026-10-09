@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Films en prévision - Les studios a&amp;m</title>
+    <title>Cellule Cinéma - Les studios a&amp;m</title>
     <link rel="icon" type="image/png" href="icon-192-lumiere.png">
     <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
     <link rel="manifest" href="manifest.json">
@@ -15,50 +15,47 @@
     <link rel="stylesheet" href="brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { text-align: center; }
+        body { text-align: center; padding: 2rem 1rem; }
 
         .page-logo { margin-left: auto; margin-right: auto; }
 
-        .grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 1.5rem;
-            max-width: 60rem;
-            margin: 1.5rem auto;
+        .eyebrow {
+            font-family: var(--font-mono);
+            font-size: .78rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin: 1.5rem 0 .25rem;
         }
 
-        .film-card {
-            width: 100%;
-            max-width: 420px;
+        h1 { margin: 0 0 1.5rem; font-size: 1.6rem; }
+
+        .player-wrap {
+            max-width: 46rem;
+            margin: 0 auto 1.5rem;
         }
 
-        .film-card h2 { text-align: center; font-size: 1.2rem; }
-
-        .film-card .badge { display: block; width: fit-content; margin: 0 auto .75rem; }
-
-        .poster {
+        video {
             width: 100%;
-            max-width: 220px;
-            height: auto;
+            max-height: 70vh;
             border-radius: var(--radius-md);
-            box-shadow: var(--shadow-sm);
+            box-shadow: var(--shadow-md);
+            background: #000;
             display: block;
-            margin: 0 auto 1rem;
         }
+
+        .empty-hint { margin: 2rem auto; }
     </style>
 </head>
 <body>
     <img class="page-logo" src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
 
-    <h2>Films en prévision</h2>
-    <p class="empty-hint">Bientôt à l'affiche.</p>
+    <p class="eyebrow">Cellule Cinéma</p>
+    <h1 id="filmTitle">Chargement...</h1>
 
-    <div id="filmsList" class="grid">
-        <p>Chargement...</p>
-    </div>
+    <div class="player-wrap" id="playerWrap"></div>
 
-    <a class="btn back" href="accueil.html">Retour à l'accueil</a>
+    <a class="btn back" href="films.html">Retour aux films</a>
 
     <div id="a11y-widget">
         <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
@@ -80,44 +77,43 @@
             return div.innerHTML;
         }
 
-        async function loadFilms() {
-            const container = document.getElementById("filmsList");
+        async function loadTrailer() {
+            const titleEl = document.getElementById("filmTitle");
+            const playerWrap = document.getElementById("playerWrap");
 
-            const { data, error } = await sb
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get("id");
+
+            if (!id) {
+                titleEl.textContent = "Bande-annonce introuvable";
+                playerWrap.innerHTML = "<p class='empty-hint'>Aucun film indiqué.</p>";
+                return;
+            }
+
+            const { data: film, error } = await sb
                 .from("articles")
                 .select("*")
-                .eq("category", "film")
-                .eq("status", "prevision")
-                .order("created_at", { ascending: false });
+                .eq("id", id)
+                .single();
 
-            if (error) {
-                container.innerHTML = "<p>Impossible de charger les films pour le moment.</p>";
+            if (error || !film) {
+                titleEl.textContent = "Bande-annonce introuvable";
+                playerWrap.innerHTML = "<p class='empty-hint'>Ce film n'existe pas ou n'est plus disponible.</p>";
                 return;
             }
 
-            if (!data || data.length === 0) {
-                container.innerHTML = "<p>Rien pour l'instant, revenez bientôt.</p>";
+            titleEl.textContent = film.title;
+
+            if (!film.trailer_url) {
+                playerWrap.innerHTML = "<p class='empty-hint'>Aucune bande-annonce n'est disponible pour ce film pour l'instant.</p>";
                 return;
             }
 
-            container.innerHTML = data.map(film => `
-                <div class="film-card card">
-                    <span class="badge prevision"><span class="dot"></span>En prévision</span>
-                    ${film.image_url ? `<img class="poster" src="${escapeHtml(film.image_url)}" alt="Affiche de ${escapeHtml(film.title)}">` : ""}
-                    <h2>${escapeHtml(film.title)}</h2>
-                    <p>${film.description ? escapeHtml(film.description) : ""}</p>
-                    ${film.date_representation ? `<p><strong>1ère représentation :</strong> ${escapeHtml(film.date_representation)}</p>` : ""}
-                    ${film.prix ? `<p><strong>${escapeHtml(film.prix)}</strong> la place</p>` : ""}
-                    ${film.trailer_url ? `<a class="btn" href="cellule_cinema.html?id=${encodeURIComponent(film.id)}">Bande-Annonce</a>` : ""}
-                </div>
-            `).join("");
-
-            data.forEach(film => {
-                sb.rpc("increment_views", { article_id: film.id });
-            });
+            const posterAttr = film.image_url ? ` poster="${escapeHtml(film.image_url)}"` : "";
+            playerWrap.innerHTML = `<video controls${posterAttr}><source src="${escapeHtml(film.trailer_url)}">Ton navigateur ne supporte pas la lecture vidéo.</video>`;
         }
 
-        loadFilms();
+        loadTrailer();
 
         (function () {
             const toggle = document.getElementById('a11yToggle');
