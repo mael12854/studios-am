@@ -199,6 +199,24 @@
                 <button type="button" class="btn" id="cancelBtn">Annuler</button>
             </div>
         </form>
+
+        <div id="relatedVideosSection" style="display:none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line);">
+            <h3 style="margin: 0 0 .75rem; font-size: 1rem;">Vidéos liées</h3>
+            <ul id="relatedVideosList" style="list-style: none; margin: 0 0 1rem; padding: 0;"></ul>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="relatedVideoTitle">Titre de la vidéo</label>
+                    <input id="relatedVideoTitle" type="text" placeholder="ex: Making-of, Scène coupée...">
+                </div>
+                <div class="form-group">
+                    <label for="relatedVideoFile">Fichier vidéo</label>
+                    <input id="relatedVideoFile" type="file" accept="video/mp4,video/webm,video/quicktime">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" id="addRelatedVideoBtn">+ Ajouter la vidéo</button>
+            </div>
+        </div>
     </section>
 
     <table>
@@ -278,6 +296,7 @@
             document.getElementById("articleId").value = "";
             document.getElementById("formTitle").textContent = "Ajouter un article";
             document.getElementById("trailerCurrent").style.display = "none";
+            document.getElementById("relatedVideosSection").style.display = "none";
             formSection.classList.add("active");
         });
 
@@ -412,9 +431,84 @@
                 trailerCurrent.style.display = "none";
             }
             document.getElementById("formTitle").textContent = "Modifier l'article";
+            document.getElementById("relatedVideosSection").style.display = "block";
+            loadRelatedVideos(article.id);
             formSection.classList.add("active");
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
+
+        async function loadRelatedVideos(articleId) {
+            const listEl = document.getElementById("relatedVideosList");
+            listEl.innerHTML = "<li class='small-muted'>Chargement...</li>";
+
+            const { data, error } = await sb
+                .from("article_videos")
+                .select("*")
+                .eq("article_id", articleId)
+                .order("created_at", { ascending: true });
+
+            if (error) {
+                listEl.innerHTML = `<li>Erreur : ${escapeHtml(error.message)}</li>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listEl.innerHTML = "<li class='small-muted'>Aucune vidéo liée pour l'instant.</li>";
+                return;
+            }
+
+            listEl.innerHTML = data.map(video => `
+                <li style="display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.5rem 0; border-bottom:1px solid var(--line);">
+                    <span>${escapeHtml(video.title)}</span>
+                    <button type="button" class="btn btn-danger" data-delete-video="${video.id}">Supprimer</button>
+                </li>
+            `).join("");
+
+            listEl.querySelectorAll("[data-delete-video]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    if (!confirm("Supprimer cette vidéo liée ?")) return;
+                    await sb.from("article_videos").delete().eq("id", btn.dataset.deleteVideo);
+                    loadRelatedVideos(articleId);
+                });
+            });
+        }
+
+        document.getElementById("addRelatedVideoBtn").addEventListener("click", async () => {
+            const articleId = document.getElementById("articleId").value;
+            const titleInput = document.getElementById("relatedVideoTitle");
+            const fileInput = document.getElementById("relatedVideoFile");
+            const title = titleInput.value.trim();
+            const file = fileInput.files[0];
+            const addBtn = document.getElementById("addRelatedVideoBtn");
+
+            if (!title || !file) {
+                messageEl.textContent = "Indique un titre et choisis un fichier pour la vidéo liée.";
+                return;
+            }
+
+            addBtn.disabled = true;
+            addBtn.textContent = "Envoi en cours...";
+
+            try {
+                const videoUrl = await uploadTrailer(file);
+                const { error } = await sb.from("article_videos").insert({
+                    article_id: articleId,
+                    title,
+                    video_url: videoUrl
+                });
+                if (error) throw error;
+
+                titleInput.value = "";
+                fileInput.value = "";
+                messageEl.textContent = "Vidéo liée ajoutée.";
+                loadRelatedVideos(articleId);
+            } catch (err) {
+                messageEl.textContent = "Erreur : " + err.message;
+            } finally {
+                addBtn.disabled = false;
+                addBtn.textContent = "+ Ajouter la vidéo";
+            }
+        });
 
         async function deleteArticle(id) {
             if (!confirm("Supprimer définitivement cet article ?")) return;

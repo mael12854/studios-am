@@ -45,6 +45,33 @@
         }
 
         .empty-hint { margin: 2rem auto; }
+
+        .related-videos {
+            max-width: 46rem;
+            margin: 2rem auto 0;
+            text-align: left;
+        }
+
+        .related-videos h2 {
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .related-video {
+            margin-bottom: 1.5rem;
+        }
+
+        .related-video h3 {
+            font-size: .95rem;
+            margin: 0 0 .5rem;
+            text-align: center;
+            color: var(--ink-muted);
+        }
+
+        .related-video video {
+            max-height: 50vh;
+        }
     </style>
 </head>
 <body>
@@ -54,6 +81,8 @@
     <h1 id="filmTitle">Chargement...</h1>
 
     <div class="player-wrap" id="playerWrap"></div>
+
+    <div class="related-videos" id="relatedVideos"></div>
 
     <a class="btn back" href="films.html">Retour aux films</a>
 
@@ -112,7 +141,30 @@
             playerWrap.innerHTML = `<video controls${posterAttr}><source src="${escapeHtml(film.trailer_url)}">Ton navigateur ne supporte pas la lecture vidéo.</video>`;
         }
 
+        async function loadRelatedVideos() {
+            const relatedEl = document.getElementById("relatedVideos");
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get("id");
+            if (!id) return;
+
+            const { data, error } = await sb
+                .from("article_videos")
+                .select("*")
+                .eq("article_id", id)
+                .order("created_at", { ascending: true });
+
+            if (error || !data || data.length === 0) return;
+
+            relatedEl.innerHTML = "<h2>Vidéos liées</h2>" + data.map(video => `
+                <div class="related-video">
+                    <h3>${escapeHtml(video.title)}</h3>
+                    <video controls><source src="${escapeHtml(video.video_url)}">Ton navigateur ne supporte pas la lecture vidéo.</video>
+                </div>
+            `).join("");
+        }
+
         loadTrailer();
+        loadRelatedVideos();
 
         (function () {
             const toggle = document.getElementById('a11yToggle');
