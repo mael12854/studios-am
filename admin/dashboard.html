@@ -201,7 +201,8 @@
         </form>
 
         <div id="relatedVideosSection" style="display:none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line);">
-            <h3 style="margin: 0 0 .75rem; font-size: 1rem;">Vidéos liées</h3>
+            <h3 style="margin: 0 0 .25rem; font-size: 1rem;">Vidéos liées</h3>
+            <p class="small-muted" style="margin: 0 0 .75rem; font-size: .85rem; color: var(--ink-muted);">Visibles uniquement par les admins, nulle part sur le site public.</p>
             <ul id="relatedVideosList" style="list-style: none; margin: 0 0 1rem; padding: 0;"></ul>
             <div class="form-row">
                 <div class="form-group">
@@ -437,6 +438,17 @@
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
+        // Bucket privé : seuls les admins peuvent uploader/lire ces vidéos (policies RLS is_admin()).
+        async function uploadAdminVideo(file) {
+            const ext = file.name.split(".").pop();
+            const path = `video-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+            const { error } = await sb.storage.from("admin-videos").upload(path, file);
+            if (error) throw error;
+
+            return path;
+        }
+
         async function loadRelatedVideos(articleId) {
             const listEl = document.getElementById("relatedVideosList");
             listEl.innerHTML = "<li class='small-muted'>Chargement...</li>";
@@ -458,11 +470,38 @@
             }
 
             listEl.innerHTML = data.map(video => `
-                <li style="display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.5rem 0; border-bottom:1px solid var(--line);">
-                    <span>${escapeHtml(video.title)}</span>
-                    <button type="button" class="btn btn-danger" data-delete-video="${video.id}">Supprimer</button>
+                <li data-video-id="${video.id}" style="padding:.5rem 0; border-bottom:1px solid var(--line);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:.75rem;">
+                        <span>${escapeHtml(video.title)}</span>
+                        <span style="display:flex; gap:.5rem;">
+                            <button type="button" class="btn" data-play-video="${video.id}" data-path="${escapeHtml(video.video_url)}">Lire</button>
+                            <button type="button" class="btn btn-danger" data-delete-video="${video.id}">Supprimer</button>
+                        </span>
+                    </div>
+                    <div class="video-player" style="display:none; margin-top:.5rem;"></div>
                 </li>
             `).join("");
+
+            listEl.querySelectorAll("[data-play-video]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const li = listEl.querySelector(`li[data-video-id="${btn.dataset.playVideo}"]`);
+                    const playerEl = li.querySelector(".video-player");
+                    if (playerEl.style.display === "block") {
+                        playerEl.style.display = "none";
+                        playerEl.innerHTML = "";
+                        return;
+                    }
+                    const { data: signed, error: signError } = await sb.storage
+                        .from("admin-videos")
+                        .createSignedUrl(btn.dataset.path, 3600);
+                    if (signError) {
+                        messageEl.textContent = "Erreur : " + signError.message;
+                        return;
+                    }
+                    playerEl.innerHTML = `<video controls style="width:100%; max-width:420px; display:block;" src="${escapeHtml(signed.signedUrl)}"></video>`;
+                    playerEl.style.display = "block";
+                });
+            });
 
             listEl.querySelectorAll("[data-delete-video]").forEach(btn => {
                 btn.addEventListener("click", async () => {
@@ -490,11 +529,11 @@
             addBtn.textContent = "Envoi en cours...";
 
             try {
-                const videoUrl = await uploadTrailer(file);
+                const videoPath = await uploadAdminVideo(file);
                 const { error } = await sb.from("article_videos").insert({
                     article_id: articleId,
                     title,
-                    video_url: videoUrl
+                    video_url: videoPath
                 });
                 if (error) throw error;
 
