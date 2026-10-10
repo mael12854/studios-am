@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page introuvable - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#F6F1E5">
+    <link rel="apple-touch-icon" href="icon-192-lumiere.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brand.css">
+    <style>
+        body {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .error-code {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            letter-spacing: .1em;
+            color: var(--gold);
+            margin: 0 0 .5rem;
+        }
+
+        h1 {
+            font-size: clamp(1.6rem, 5vw, 2.2rem);
+            margin: 0 0 1rem;
+        }
+
+        p.message {
+            color: var(--ink-muted);
+            max-width: 32rem;
+            margin: 0 auto 2rem;
+        }
+
+        img.mark {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: var(--shadow-sm);
+            margin: 0 0 2rem;
+        }
+    </style>
+</head>
+<body>
+    <img class="mark" src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
+
+    <p class="error-code">ERREUR 404</p>
+    <h1>Cette page n'existe pas</h1>
+    <p class="message">La page que tu cherches a peut-être été déplacée ou n'existe plus.</p>
+
+    <a class="btn btn-primary" href="/">Retour à l'accueil</a>
+
+    <div id="a11y-widget">
+        <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
+        <div id="a11yPanel" aria-hidden="true">
+            <button id="fontIncrease" aria-label="Agrandir le texte">A+</button>
+            <button id="fontDecrease" aria-label="Réduire le texte">A-</button>
+            <button id="contrastToggle" aria-label="Activer le contraste élevé">Contraste élevé</button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const toggle = document.getElementById('a11yToggle');
+            const panel = document.getElementById('a11yPanel');
+            const fontIncrease = document.getElementById('fontIncrease');
+            const fontDecrease = document.getElementById('fontDecrease');
+            const contrastToggle = document.getElementById('contrastToggle');
+
+            let fontSize = parseInt(localStorage.getItem('a11y-fontSize')) || 100;
+            let highContrast = localStorage.getItem('a11y-contrast') === 'true';
+
+            function applySettings() {
+                document.documentElement.style.fontSize = fontSize + '%';
+                document.body.classList.toggle('high-contrast', highContrast);
+            }
+            applySettings();
+
+            toggle.addEventListener('click', () => {
+                const isActive = panel.classList.toggle('active');
+                panel.setAttribute('aria-hidden', String(!isActive));
+            });
+
+            fontIncrease.addEventListener('click', () => {
+                fontSize = Math.min(fontSize + 10, 150);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            fontDecrease.addEventListener('click', () => {
+                fontSize = Math.max(fontSize - 10, 80);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            contrastToggle.addEventListener('click', () => {
+                highContrast = !highContrast;
+                localStorage.setItem('a11y-contrast', highContrast);
+                applySettings();
+            });
+        })();
+    </script>
+</body>
+</html>
