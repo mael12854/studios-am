@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="nuit">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réservations - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="../icon-192.png">
+    <link rel="shortcut icon" type="image/png" href="../icon-192.png">
+    <link rel="apple-touch-icon" href="../icon-192.png">
+    <meta name="theme-color" content="#161513">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        header h1 { margin: 0; font-size: 1.3rem; }
+        header nav { display: flex; gap: .75rem; flex-wrap: wrap; }
+        header nav a { text-decoration: none; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        th, td {
+            text-align: left;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--line);
+            font-size: .92rem;
+        }
+
+        th {
+            font-family: var(--font-mono);
+            background: var(--surface-alt);
+            color: var(--ink-muted);
+            font-size: .72rem;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+
+        .amount { font-family: var(--font-mono); color: var(--gold); }
+
+        .badge.paid { background: var(--sage); }
+
+        .actions-cell { display: flex; gap: .5rem; }
+
+        #message {
+            font-size: .9rem;
+            margin-bottom: 1rem;
+            min-height: 1.2rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--ink-muted);
+        }
+
+        @media (max-width: 700px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead { display: none; }
+            td { border-bottom: none; padding: .4rem 1rem; }
+            tr { border-bottom: 1px solid var(--line); padding: .75rem 0; }
+            td::before {
+                content: attr(data-label);
+                font-family: var(--font-mono);
+                font-weight: 600;
+                color: var(--ink-muted);
+                display: block;
+                font-size: .72rem;
+                text-transform: uppercase;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Réservations</h1>
+        <nav>
+            <a class="btn" href="dashboard.html">← Tableau de bord</a>
+            <button class="btn" id="logoutBtn">Se déconnecter</button>
+        </nav>
+    </header>
+
+    <p id="message" aria-live="polite"></p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Événement</th>
+                <th>Client</th>
+                <th>Places</th>
+                <th>Montant</th>
+                <th>Statut</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="resBody">
+            <tr><td colspan="6">Chargement...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const messageEl = document.getElementById("message");
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
+        function formatPrice(num) {
+            return Number(num).toFixed(2).replace(".", ",") + " €";
+        }
+
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { window.location.href = "index.html"; return; }
+
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) { await sb.auth.signOut(); window.location.href = "index.html"; return; }
+
+            loadReservations();
+        })();
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+            await sb.auth.signOut();
+            window.location.href = "index.html";
+        });
+
+        async function loadReservations() {
+            const tbody = document.getElementById("resBody");
+
+            const { data, error } = await sb
+                .from("ticket_reservations")
+                .select("*, articles(title)")
+                .order("created_at", { ascending: false });
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message)}</td></tr>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Aucune réservation pour l'instant.</td></tr>`;
+                return;
+            }
+
+            const userIds = [...new Set(data.map(r => r.user_id))];
+            const { data: profiles } = await sb.rpc("get_user_profiles", { user_ids: userIds });
+            const profileMap = {};
+            (profiles || []).forEach(p => { profileMap[p.id] = p; });
+
+            function clientLabel(userId) {
+                const p = profileMap[userId];
+                if (!p) return userId;
+                if (p.prenom && p.nom) return `${p.prenom} ${p.nom}`;
+                return p.email || userId;
+            }
+
+            tbody.innerHTML = data.map(r => `
+                <tr data-id="${r.id}">
+                    <td data-label="Événement">${escapeHtml(r.articles ? r.articles.title : "—")}</td>
+                    <td data-label="Client">${escapeHtml(clientLabel(r.user_id))}</td>
+                    <td data-label="Places">${r.quantity}</td>
+                    <td data-label="Montant" class="amount">${escapeHtml(formatPrice(r.quantity * r.unit_price))}</td>
+                    <td data-label="Statut">
+                        <span class="badge ${r.paid ? "paid" : "prevision"}"><span class="dot"></span>${r.paid ? "Payé" : "À régler"}</span>
+                    </td>
+                    <td data-label="Actions" class="actions-cell">
+                        ${!r.paid ? `<button class="btn" data-action="mark-paid" data-id="${r.id}">Marquer payé</button>` : ""}
+                    </td>
+                </tr>
+            `).join("");
+
+            tbody.querySelectorAll("[data-action='mark-paid']").forEach(btn => {
+                btn.addEventListener("click", () => markPaid(btn.dataset.id));
+            });
+        }
+
+        async function markPaid(id) {
+            const { error } = await sb
+                .from("ticket_reservations")
+                .update({ paid: true, paid_at: new Date().toISOString() })
+                .eq("id", id);
+
+            if (error) {
+                messageEl.textContent = "Erreur : " + error.message;
+            } else {
+                messageEl.textContent = "Réservation marquée payée.";
+                loadReservations();
+            }
+        }
+    </script>
+</body>
+</html>

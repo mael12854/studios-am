@@ -44,6 +44,37 @@
             display: block;
             margin: 0 auto 1rem;
         }
+
+        .reservation {
+            margin-top: .75rem;
+            padding-top: .75rem;
+            border-top: 1px solid var(--line);
+        }
+
+        .reservation .hint {
+            font-size: .85rem;
+            color: var(--ink-muted);
+            margin: 0;
+        }
+
+        .reservation .reserve-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+        }
+
+        .reservation input[type="number"] {
+            width: 4.5rem;
+            margin-bottom: 0;
+            text-align: center;
+        }
+
+        .reservation .reserve-msg {
+            font-size: .85rem;
+            color: var(--ink-muted);
+            margin: .5rem 0 0;
+        }
     </style>
 </head>
 <body>
@@ -75,8 +106,55 @@
             return div.innerHTML;
         }
 
+        function formatDateFR(isoDate) {
+            if (!isoDate) return null;
+            const d = new Date(isoDate + "T00:00:00");
+            return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        }
+
+        function formatPrice(num) {
+            return Number(num).toFixed(2).replace(".", ",") + " €";
+        }
+
+        function reservationWindow(isoDate) {
+            if (!isoDate) return null;
+            const eventDate = new Date(isoDate + "T00:00:00");
+            const opensAt = new Date(eventDate);
+            opensAt.setMonth(opensAt.getMonth() - 3);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            return { eventDate, opensAt, isOpen: now >= opensAt && now <= eventDate };
+        }
+
+        function reservationBlock(article, userId) {
+            const win = reservationWindow(article.date_representation);
+            if (!win) return "";
+
+            if (!win.isOpen) {
+                const opensAtLabel = win.opensAt.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                return `<div class="reservation"><p class="hint">Réservations ouvertes à partir du ${opensAtLabel}.</p></div>`;
+            }
+
+            if (!userId) {
+                return `<div class="reservation"><p class="hint"><a href="page_de_connexion.html">Connectez-vous</a> pour réserver des places.</p></div>`;
+            }
+
+            return `
+                <div class="reservation">
+                    <div class="reserve-row">
+                        <input type="number" min="1" value="1" data-qty-for="${article.id}" aria-label="Nombre de places">
+                        <button type="button" class="btn" data-reserve-btn="${article.id}" data-unit-price="${article.prix}">Réserver</button>
+                    </div>
+                    <p class="reserve-msg" data-reserve-msg="${article.id}"></p>
+                </div>
+            `;
+        }
+
         async function loadPieces() {
             const container = document.getElementById("piecesList");
+
+            const { data: { session } } = await sb.auth.getSession();
+            const userId = session ? session.user.id : null;
 
             const { data, error } = await sb
                 .from("articles")
@@ -100,13 +178,45 @@
                     ${piece.image_url ? `<img class="poster" src="${escapeHtml(piece.image_url)}" alt="Affiche de ${escapeHtml(piece.title)}">` : ""}
                     <h2>${escapeHtml(piece.title)}</h2>
                     <p>${piece.description ? escapeHtml(piece.description) : ""}</p>
-                    ${piece.date_representation ? `<p><strong>Date :</strong> ${escapeHtml(piece.date_representation)}</p>` : ""}
-                    ${piece.prix ? `<p><strong>${escapeHtml(piece.prix)}</strong> la place</p>` : ""}
+                    ${piece.date_representation ? `<p><strong>Date :</strong> ${escapeHtml(formatDateFR(piece.date_representation))}</p>` : ""}
+                    <p><strong>${escapeHtml(formatPrice(piece.prix))}</strong> la place</p>
+                    ${reservationBlock(piece, userId)}
                 </div>
             `).join("");
 
             data.forEach(piece => {
                 sb.rpc("increment_views", { article_id: piece.id });
+            });
+
+            container.querySelectorAll("[data-reserve-btn]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const articleId = btn.dataset.reserveBtn;
+                    const unitPrice = parseFloat(btn.dataset.unitPrice);
+                    const qtyInput = container.querySelector(`input[data-qty-for="${articleId}"]`);
+                    const msgEl = container.querySelector(`[data-reserve-msg="${articleId}"]`);
+                    const quantity = Math.max(1, parseInt(qtyInput.value) || 1);
+
+                    btn.disabled = true;
+                    btn.textContent = "Réservation...";
+
+                    const { error } = await sb.from("ticket_reservations").insert({
+                        article_id: articleId,
+                        user_id: userId,
+                        quantity,
+                        unit_price: unitPrice
+                    });
+
+                    if (error) {
+                        msgEl.textContent = "Erreur : " + error.message;
+                        btn.disabled = false;
+                        btn.textContent = "Réserver";
+                    } else {
+                        const total = formatPrice(quantity * unitPrice);
+                        msgEl.textContent = `${quantity} place(s) réservée(s). Prévoyez ${total} en liquide, à régler sur place avant la séance.`;
+                        btn.textContent = "Réserver";
+                        btn.disabled = false;
+                    }
+                });
             });
         }
 
