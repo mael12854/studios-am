@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
         body { text-align: center; }
 
@@ -29,6 +30,49 @@
         header h1 { margin: 0; font-size: 1.3rem; }
         header nav { display: flex; gap: .75rem; flex-wrap: wrap; }
         header nav a, header nav button { text-decoration: none; }
+
+        #scannerSection {
+            max-width: 420px;
+            margin: 0 auto 1.5rem;
+        }
+
+        #scannerWrap {
+            position: relative;
+            display: none;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: .75rem;
+            background: #000;
+        }
+
+        #scannerVideo {
+            width: 100%;
+            display: block;
+        }
+
+        #scannerFrame {
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            width: 70%;
+            height: 70%;
+            border: 2px solid var(--gold);
+            border-radius: var(--radius-md);
+            pointer-events: none;
+        }
+
+        .manual-entry {
+            display: flex;
+            gap: .5rem;
+            margin-top: .75rem;
+            justify-content: center;
+        }
+
+        .manual-entry input {
+            margin-bottom: 0;
+            flex: 1;
+            max-width: 260px;
+        }
 
         #result {
             max-width: 480px;
@@ -72,7 +116,19 @@
         </nav>
     </header>
 
-    <p id="message" aria-live="polite">Scannez le QR code d'un billet avec l'appareil photo pour le contrôler.</p>
+    <p id="message" aria-live="polite">Scannez le QR code d'un billet pour le contrôler.</p>
+
+    <div id="scannerSection">
+        <div id="scannerWrap">
+            <video id="scannerVideo" playsinline muted autoplay></video>
+            <div id="scannerFrame"></div>
+        </div>
+        <button type="button" class="btn-primary" id="toggleScanBtn">Démarrer le scanner</button>
+        <div class="manual-entry">
+            <input type="text" id="manualId" placeholder="Ou collez l'identifiant du billet">
+            <button type="button" class="btn" id="manualBtn">Vérifier</button>
+        </div>
+    </div>
 
     <div id="result" class="card" style="display:none;"></div>
 
@@ -102,6 +158,83 @@
         document.getElementById("logoutBtn").addEventListener("click", async () => {
             await sb.auth.signOut();
             window.location.href = "index.html";
+        });
+
+        function extractTicketId(text) {
+            try {
+                const url = new URL(text);
+                const id = url.searchParams.get("id");
+                if (id) return id;
+            } catch (e) {}
+            return text.trim();
+        }
+
+        const scannerWrap = document.getElementById("scannerWrap");
+        const scannerVideo = document.getElementById("scannerVideo");
+        const toggleScanBtn = document.getElementById("toggleScanBtn");
+        const scanCanvas = document.createElement("canvas");
+        const scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
+
+        let scanStream = null;
+        let scanLoopId = null;
+
+        async function startScanner() {
+            try {
+                scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            } catch (e) {
+                messageEl.textContent = "Impossible d'accéder à la caméra : " + e.message;
+                return;
+            }
+
+            scannerVideo.srcObject = scanStream;
+            await scannerVideo.play();
+            scannerWrap.style.display = "block";
+            toggleScanBtn.textContent = "Arrêter le scanner";
+            messageEl.textContent = "Visez le QR code du billet.";
+
+            const tick = () => {
+                if (scannerVideo.readyState === scannerVideo.HAVE_ENOUGH_DATA) {
+                    scanCanvas.width = scannerVideo.videoWidth;
+                    scanCanvas.height = scannerVideo.videoHeight;
+                    scanCtx.drawImage(scannerVideo, 0, 0, scanCanvas.width, scanCanvas.height);
+                    const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+                    const code = typeof jsQR === "function" ? jsQR(imageData.data, imageData.width, imageData.height) : null;
+                    if (code && code.data) {
+                        stopScanner();
+                        loadTicket(extractTicketId(code.data));
+                        return;
+                    }
+                }
+                scanLoopId = requestAnimationFrame(tick);
+            };
+            scanLoopId = requestAnimationFrame(tick);
+        }
+
+        function stopScanner() {
+            if (scanLoopId) cancelAnimationFrame(scanLoopId);
+            scanLoopId = null;
+            if (scanStream) {
+                scanStream.getTracks().forEach(track => track.stop());
+                scanStream = null;
+            }
+            scannerWrap.style.display = "none";
+            toggleScanBtn.textContent = "Démarrer le scanner";
+        }
+
+        toggleScanBtn.addEventListener("click", () => {
+            if (scanStream) {
+                stopScanner();
+                messageEl.textContent = "Scanner arrêté.";
+            } else {
+                startScanner();
+            }
+        });
+
+        document.getElementById("manualBtn").addEventListener("click", () => {
+            const value = document.getElementById("manualId").value.trim();
+            if (!value) return;
+            if (scanStream) stopScanner();
+            loadTicket(extractTicketId(value));
         });
 
         async function loadTicket(id) {
@@ -138,7 +271,14 @@
                     <dt>Entrée</dt><dd id="checkinStatus">${r.checked_in ? `<span class="status-warn">Déjà contrôlé le ${escapeHtml(formatDateTimeFR(r.checked_in_at))}</span>` : `<span class="status-ok">Pas encore entré</span>`}</dd>
                 </dl>
                 <button type="button" class="btn-primary" id="validateEntryBtn" ${r.checked_in ? "disabled" : ""}>${r.checked_in ? "Déjà validé" : "Valider l'entrée"}</button>
+                <button type="button" class="btn" id="scanNextBtn" style="margin-left:.5rem;">Scanner un autre billet</button>
             `;
+
+            document.getElementById("scanNextBtn").addEventListener("click", () => {
+                resultEl.style.display = "none";
+                document.getElementById("manualId").value = "";
+                startScanner();
+            });
 
             const btn = document.getElementById("validateEntryBtn");
             if (!r.checked_in) {
