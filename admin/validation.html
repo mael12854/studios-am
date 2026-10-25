@@ -100,6 +100,26 @@
         .status-ok { color: var(--sage); font-weight: 600; }
         .status-warn { color: var(--danger); font-weight: 600; }
 
+        .amount-due {
+            text-align: center;
+            margin: 0 0 1rem;
+        }
+
+        .amount-due p {
+            margin: 0;
+            color: var(--ink-muted);
+            font-size: .85rem;
+        }
+
+        .amount-due .amount {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            color: var(--gold);
+            margin: .15rem 0;
+        }
+
+        .amount-due.is-paid .amount { color: var(--sage); }
+
         #message {
             font-size: .95rem;
             min-height: 1.2rem;
@@ -261,13 +281,17 @@
             messageEl.textContent = "";
             resultEl.style.display = "block";
             resultEl.innerHTML = `
+                <div class="amount-due ${r.paid ? "is-paid" : ""}">
+                    <p>${r.paid ? "Déjà réglé" : "Montant à encaisser en liquide"}</p>
+                    <p class="amount">${escapeHtml(formatPrice(amount))}</p>
+                    ${!r.paid ? `<button type="button" class="btn-primary" id="markPaidBtn">Marquer payé</button>` : ""}
+                </div>
                 <dl>
                     <dt>Événement</dt><dd>${escapeHtml(r.articles ? r.articles.title : "—")}</dd>
                     <dt>Date</dt><dd>${r.articles && r.articles.date_representation ? escapeHtml(new Date(r.articles.date_representation + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })) : "—"}</dd>
                     <dt>Lieu</dt><dd>${r.articles && r.articles.lieu ? escapeHtml(r.articles.lieu) : "—"}</dd>
                     <dt>Client</dt><dd>${escapeHtml(clientLabel)}</dd>
                     <dt>Places</dt><dd>${r.quantity} (dont ${r.minors || 0} mineur(s))</dd>
-                    <dt>Montant en liquide</dt><dd>${escapeHtml(formatPrice(amount))} — ${r.paid ? "payé" : "à régler"}</dd>
                     <dt>Entrée</dt><dd id="checkinStatus">${r.checked_in ? `<span class="status-warn">Déjà contrôlé le ${escapeHtml(formatDateTimeFR(r.checked_in_at))}</span>` : `<span class="status-ok">Pas encore entré</span>`}</dd>
                 </dl>
                 <button type="button" class="btn-primary" id="validateEntryBtn" ${r.checked_in ? "disabled" : ""}>${r.checked_in ? "Déjà validé" : "Valider l'entrée"}</button>
@@ -279,6 +303,26 @@
                 document.getElementById("manualId").value = "";
                 startScanner();
             });
+
+            const markPaidBtn = document.getElementById("markPaidBtn");
+            if (markPaidBtn) {
+                markPaidBtn.addEventListener("click", async () => {
+                    markPaidBtn.disabled = true;
+                    markPaidBtn.textContent = "Enregistrement...";
+                    const { error: paidError } = await sb
+                        .from("ticket_reservations")
+                        .update({ paid: true, paid_at: new Date().toISOString() })
+                        .eq("id", id);
+
+                    if (paidError) {
+                        messageEl.textContent = "Erreur : " + paidError.message;
+                        markPaidBtn.disabled = false;
+                        markPaidBtn.textContent = "Marquer payé";
+                    } else {
+                        loadTicket(id);
+                    }
+                });
+            }
 
             const btn = document.getElementById("validateEntryBtn");
             if (!r.checked_in) {
