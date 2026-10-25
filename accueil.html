@@ -144,5 +144,32 @@
             navigator.serviceWorker.register("service-worker.js").catch(() => {});
         }
     </script>
+
+    <!-- Tawk.to -->
+    <script type="text/javascript">
+    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+    (async function(){
+        try {
+            if (typeof sb !== "undefined") {
+                const { data: { session } } = await sb.auth.getSession();
+                if (session && session.user) {
+                    const meta = session.user.user_metadata || {};
+                    Tawk_API.visitor = {
+                        name: (meta.prenom && meta.nom) ? `${meta.prenom} ${meta.nom}` : session.user.email,
+                        email: session.user.email
+                    };
+                }
+            }
+        } catch (e) {}
+    })();
+    (function(){
+    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+    s1.async=true;
+    s1.src='https://embed.tawk.to/6adca14d64a87f34797a15fb/1k5mtc5ur';
+    s1.charset='UTF-8';
+    s1.setAttribute('crossorigin','*');
+    s0.parentNode.insertBefore(s1,s0);
+    })();
+    </script>
 </body>
 </html>
