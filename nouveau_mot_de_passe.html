@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouveau mot de passe - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#F6F1E5">
+    <link rel="apple-touch-icon" href="icon-192-lumiere.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { text-align: center; }
+
+        .page-logo { margin: 0 auto 1rem; }
+
+        .reset-box {
+            max-width: 320px;
+            margin: 1rem auto;
+        }
+
+        .reset-box h1 {
+            font-size: 1.3rem;
+            text-align: center;
+        }
+
+        .login-link {
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        #message {
+            font-size: 0.9rem;
+            min-height: 1.2rem;
+            text-align: center;
+        }
+
+        #checking {
+            font-size: 0.9rem;
+            color: var(--ink-muted);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <img class="page-logo" src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
+
+    <div class="reset-box card">
+        <h1>Nouveau mot de passe</h1>
+
+        <p id="checking">Vérification du lien...</p>
+
+        <form id="resetForm" style="display:none;">
+            <label for="password">Nouveau mot de passe</label>
+            <input id="password" type="password" autocomplete="new-password" minlength="6" required>
+
+            <label for="passwordConfirm">Confirmation</label>
+            <input id="passwordConfirm" type="password" autocomplete="new-password" minlength="6" required>
+
+            <button type="submit" id="submitBtn" class="btn-primary">Modifier le mot de passe</button>
+        </form>
+
+        <p id="message" aria-live="polite"></p>
+
+        <p id="invalidLinkAction" class="login-link" style="display:none;"><a href="mot_de_passe_oublie.html">Demander un nouveau lien</a></p>
+    </div>
+
+    <div id="a11y-widget">
+        <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
+        <div id="a11yPanel" aria-hidden="true">
+            <button id="fontIncrease" aria-label="Agrandir le texte">A+</button>
+            <button id="fontDecrease" aria-label="Réduire le texte">A-</button>
+            <button id="contrastToggle" aria-label="Activer le contraste élevé">Contraste élevé</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const checkingEl = document.getElementById("checking");
+        const resetForm = document.getElementById("resetForm");
+        const messageEl = document.getElementById("message");
+        const invalidLinkAction = document.getElementById("invalidLinkAction");
+
+        function showInvalidLink() {
+            checkingEl.style.display = "none";
+            resetForm.style.display = "none";
+            messageEl.textContent = "Ce lien n'est plus valide. Demandez-en un nouveau.";
+            invalidLinkAction.style.display = "block";
+        }
+
+        function showForm() {
+            checkingEl.style.display = "none";
+            resetForm.style.display = "block";
+        }
+
+        // Supabase renvoie une erreur dans le hash de l'URL si le lien est expiré ou invalide.
+        if (window.location.hash.includes("error=")) {
+            showInvalidLink();
+        } else {
+            let resolved = false;
+
+            sb.auth.onAuthStateChange((event) => {
+                if (event === "PASSWORD_RECOVERY" && !resolved) {
+                    resolved = true;
+                    showForm();
+                }
+            });
+
+            setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    showInvalidLink();
+                }
+            }, 5000);
+        }
+
+        resetForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const password = document.getElementById("password").value;
+            const passwordConfirm = document.getElementById("passwordConfirm").value;
+            const submitBtn = document.getElementById("submitBtn");
+
+            messageEl.textContent = "";
+
+            if (password.length < 6) {
+                messageEl.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                messageEl.textContent = "Les deux mots de passe ne sont pas identiques.";
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Modification...";
+
+            const { error } = await sb.auth.updateUser({ password });
+
+            if (error) {
+                messageEl.textContent = error.message;
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Modifier le mot de passe";
+            } else {
+                resetForm.style.display = "none";
+                messageEl.textContent = "Mot de passe modifié.";
+                setTimeout(() => {
+                    window.location.href = "page_de_connexion.html";
+                }, 2000);
+            }
+        });
+
+        (function () {
+            const toggle = document.getElementById('a11yToggle');
+            const panel = document.getElementById('a11yPanel');
+            const fontIncrease = document.getElementById('fontIncrease');
+            const fontDecrease = document.getElementById('fontDecrease');
+            const contrastToggle = document.getElementById('contrastToggle');
+
+            let fontSize = parseInt(localStorage.getItem('a11y-fontSize')) || 100;
+            let highContrast = localStorage.getItem('a11y-contrast') === 'true';
+
+            function applySettings() {
+                document.documentElement.style.fontSize = fontSize + '%';
+                document.body.classList.toggle('high-contrast', highContrast);
+            }
+            applySettings();
+
+            toggle.addEventListener('click', () => {
+                const isActive = panel.classList.toggle('active');
+                panel.setAttribute('aria-hidden', String(!isActive));
+            });
+
+            fontIncrease.addEventListener('click', () => {
+                fontSize = Math.min(fontSize + 10, 150);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            fontDecrease.addEventListener('click', () => {
+                fontSize = Math.max(fontSize - 10, 80);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            contrastToggle.addEventListener('click', () => {
+                highContrast = !highContrast;
+                localStorage.setItem('a11y-contrast', highContrast);
+                applySettings();
+            });
+        })();
+    </script>
+
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js").catch(() => {});
+        }
+    </script>
+
+    <!-- Tawk.to -->
+    <script type="text/javascript">
+    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+    (async function(){
+        try {
+            if (typeof sb !== "undefined") {
+                const { data: { session } } = await sb.auth.getSession();
+                if (session && session.user) {
+                    const meta = session.user.user_metadata || {};
+                    Tawk_API.visitor = {
+                        name: (meta.prenom && meta.nom) ? `${meta.prenom} ${meta.nom}` : session.user.email,
+                        email: session.user.email
+                    };
+                }
+            }
+        } catch (e) {}
+    })();
+    (function(){
+    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+    s1.async=true;
+    s1.src='https://embed.tawk.to/6adca14d64a87f34797a15fb/1k5mtc5ur';
+    s1.charset='UTF-8';
+    s1.setAttribute('crossorigin','*');
+    s0.parentNode.insertBefore(s1,s0);
+    })();
+    </script>
+</body>
+</html>
