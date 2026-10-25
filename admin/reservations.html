@@ -92,6 +92,7 @@
         <h1>Réservations</h1>
         <nav>
             <a class="btn" href="dashboard.html">← Tableau de bord</a>
+            <a class="btn" href="validation.html">Contrôle des billets</a>
             <button class="btn" id="logoutBtn">Se déconnecter</button>
         </nav>
     </header>
@@ -104,13 +105,15 @@
                 <th>Événement</th>
                 <th>Client</th>
                 <th>Places</th>
+                <th>Mineurs</th>
                 <th>Montant</th>
                 <th>Statut</th>
+                <th>Entrée</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody id="resBody">
-            <tr><td colspan="6">Chargement...</td></tr>
+            <tr><td colspan="8">Chargement...</td></tr>
         </tbody>
     </table>
 
@@ -155,12 +158,12 @@
                 .order("created_at", { ascending: false });
 
             if (error) {
-                tbody.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8">${escapeHtml(error.message)}</td></tr>`;
                 return;
             }
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Aucune réservation pour l'instant.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Aucune réservation pour l'instant.</td></tr>`;
                 return;
             }
 
@@ -181,9 +184,13 @@
                     <td data-label="Événement">${escapeHtml(r.articles ? r.articles.title : "—")}</td>
                     <td data-label="Client">${escapeHtml(clientLabel(r.user_id))}</td>
                     <td data-label="Places">${r.quantity}</td>
-                    <td data-label="Montant" class="amount">${escapeHtml(formatPrice(r.quantity * r.unit_price))}</td>
+                    <td data-label="Mineurs">${r.minors || 0}</td>
+                    <td data-label="Montant" class="amount">${escapeHtml(formatPrice((r.quantity - (r.minors || 0)) * r.unit_price))}</td>
                     <td data-label="Statut">
                         <span class="badge ${r.paid ? "paid" : "prevision"}"><span class="dot"></span>${r.paid ? "Payé" : "À régler"}</span>
+                    </td>
+                    <td data-label="Entrée">
+                        <span class="badge ${r.checked_in ? "paid" : ""}"><span class="dot"></span>${r.checked_in ? "Entré" : "Pas encore"}</span>
                     </td>
                     <td data-label="Actions" class="actions-cell">
                         ${!r.paid ? `<button class="btn" data-action="mark-paid" data-id="${r.id}">Marquer payé</button>` : ""}

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="nuit">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle des billets - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="../icon-192.png">
+    <link rel="shortcut icon" type="image/png" href="../icon-192.png">
+    <link rel="apple-touch-icon" href="../icon-192.png">
+    <meta name="theme-color" content="#161513">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { text-align: center; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            text-align: left;
+        }
+
+        header h1 { margin: 0; font-size: 1.3rem; }
+        header nav { display: flex; gap: .75rem; flex-wrap: wrap; }
+        header nav a, header nav button { text-decoration: none; }
+
+        #result {
+            max-width: 480px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        #result dl {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: .4rem 1rem;
+            margin: 0 0 1.25rem;
+        }
+
+        #result dt {
+            font-family: var(--font-mono);
+            font-size: .72rem;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            color: var(--ink-muted);
+        }
+
+        #result dd { margin: 0; }
+
+        .status-ok { color: var(--sage); font-weight: 600; }
+        .status-warn { color: var(--danger); font-weight: 600; }
+
+        #message {
+            font-size: .95rem;
+            min-height: 1.2rem;
+            margin-bottom: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Contrôle des billets</h1>
+        <nav>
+            <a class="btn" href="dashboard.html">← Tableau de bord</a>
+            <button class="btn" id="logoutBtn">Se déconnecter</button>
+        </nav>
+    </header>
+
+    <p id="message" aria-live="polite">Scannez le QR code d'un billet avec l'appareil photo pour le contrôler.</p>
+
+    <div id="result" class="card" style="display:none;"></div>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const messageEl = document.getElementById("message");
+        const resultEl = document.getElementById("result");
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
+        function formatPrice(num) {
+            return Number(num).toFixed(2).replace(".", ",") + " €";
+        }
+
+        function formatDateTimeFR(iso) {
+            if (!iso) return "—";
+            return new Date(iso).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
+        }
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+            await sb.auth.signOut();
+            window.location.href = "index.html";
+        });
+
+        async function loadTicket(id) {
+            const { data: r, error } = await sb
+                .from("ticket_reservations")
+                .select("*, articles(title, date_representation, lieu)")
+                .eq("id", id)
+                .maybeSingle();
+
+            if (error || !r) {
+                messageEl.textContent = "Billet introuvable. Vérifiez le QR code scanné.";
+                resultEl.style.display = "none";
+                return;
+            }
+
+            const { data: profiles } = await sb.rpc("get_user_profiles", { user_ids: [r.user_id] });
+            const profile = (profiles || [])[0];
+            const clientLabel = profile
+                ? (profile.prenom && profile.nom ? `${profile.prenom} ${profile.nom}` : profile.email)
+                : r.user_id;
+
+            const amount = (r.quantity - (r.minors || 0)) * r.unit_price;
+
+            messageEl.textContent = "";
+            resultEl.style.display = "block";
+            resultEl.innerHTML = `
+                <dl>
+                    <dt>Événement</dt><dd>${escapeHtml(r.articles ? r.articles.title : "—")}</dd>
+                    <dt>Date</dt><dd>${r.articles && r.articles.date_representation ? escapeHtml(new Date(r.articles.date_representation + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })) : "—"}</dd>
+                    <dt>Lieu</dt><dd>${r.articles && r.articles.lieu ? escapeHtml(r.articles.lieu) : "—"}</dd>
+                    <dt>Client</dt><dd>${escapeHtml(clientLabel)}</dd>
+                    <dt>Places</dt><dd>${r.quantity} (dont ${r.minors || 0} mineur(s))</dd>
+                    <dt>Montant en liquide</dt><dd>${escapeHtml(formatPrice(amount))} — ${r.paid ? "payé" : "à régler"}</dd>
+                    <dt>Entrée</dt><dd id="checkinStatus">${r.checked_in ? `<span class="status-warn">Déjà contrôlé le ${escapeHtml(formatDateTimeFR(r.checked_in_at))}</span>` : `<span class="status-ok">Pas encore entré</span>`}</dd>
+                </dl>
+                <button type="button" class="btn-primary" id="validateEntryBtn" ${r.checked_in ? "disabled" : ""}>${r.checked_in ? "Déjà validé" : "Valider l'entrée"}</button>
+            `;
+
+            const btn = document.getElementById("validateEntryBtn");
+            if (!r.checked_in) {
+                btn.addEventListener("click", async () => {
+                    btn.disabled = true;
+                    btn.textContent = "Validation...";
+                    const { error: updateError } = await sb
+                        .from("ticket_reservations")
+                        .update({ checked_in: true, checked_in_at: new Date().toISOString() })
+                        .eq("id", id);
+
+                    if (updateError) {
+                        messageEl.textContent = "Erreur : " + updateError.message;
+                        btn.disabled = false;
+                        btn.textContent = "Valider l'entrée";
+                    } else {
+                        loadTicket(id);
+                    }
+                });
+            }
+        }
+
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { window.location.href = "index.html"; return; }
+
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) { await sb.auth.signOut(); window.location.href = "index.html"; return; }
+
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get("id");
+            if (id) {
+                loadTicket(id);
+            }
+        })();
+    </script>
+</body>
+</html>

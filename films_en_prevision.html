@@ -61,9 +61,18 @@
 
         .reservation .reserve-row {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            gap: .5rem;
+            gap: 1rem;
+            margin-bottom: .5rem;
+        }
+
+        .reservation .qty-label {
+            display: flex;
+            flex-direction: column;
+            gap: .25rem;
+            font-size: .78rem;
+            color: var(--ink-muted);
         }
 
         .reservation input[type="number"] {
@@ -90,6 +99,7 @@
     </div>
 
     <a class="btn back" href="accueil.html">Retour à l'accueil</a>
+    <a class="btn" id="cartLink" href="panier.html">Panier</a>
 
     <div id="a11y-widget">
         <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
@@ -121,6 +131,36 @@
             return Number(num).toFixed(2).replace(".", ",") + " €";
         }
 
+        const CART_KEY = "am-cart";
+
+        function getCart() {
+            try { return JSON.parse(localStorage.getItem(CART_KEY)) || []; } catch (e) { return []; }
+        }
+
+        function saveCart(cart) {
+            localStorage.setItem(CART_KEY, JSON.stringify(cart));
+        }
+
+        function addToCart(item) {
+            const cart = getCart();
+            const existing = cart.find(i => i.article_id === item.article_id);
+            if (existing) {
+                existing.quantity = item.quantity;
+                existing.minors = item.minors;
+            } else {
+                cart.push(item);
+            }
+            saveCart(cart);
+            updateCartLink();
+        }
+
+        function updateCartLink() {
+            const link = document.getElementById("cartLink");
+            if (!link) return;
+            const count = getCart().reduce((sum, i) => sum + i.quantity, 0);
+            link.textContent = count > 0 ? `Panier (${count})` : "Panier";
+        }
+
         function reservationWindow(isoDate) {
             if (!isoDate) return null;
             const eventDate = new Date(isoDate + "T00:00:00");
@@ -131,7 +171,9 @@
             return { eventDate, opensAt, isOpen: now >= opensAt && now <= eventDate };
         }
 
-        function reservationBlock(article, userId) {
+        function reservationBlock(article, userId, isAdmin) {
+            if (isAdmin) return "";
+
             const win = reservationWindow(article.date_representation);
             if (!win) return "";
 
@@ -147,9 +189,14 @@
             return `
                 <div class="reservation">
                     <div class="reserve-row">
-                        <input type="number" min="1" value="1" data-qty-for="${article.id}" aria-label="Nombre de places">
-                        <button type="button" class="btn" data-reserve-btn="${article.id}" data-unit-price="${article.prix}">Réserver</button>
+                        <label class="qty-label">Places
+                            <input type="number" min="1" value="1" data-qty-for="${article.id}" aria-label="Nombre de places">
+                        </label>
+                        <label class="qty-label">Mineurs (gratuit)
+                            <input type="number" min="0" value="0" data-minors-for="${article.id}" aria-label="Nombre de places mineurs">
+                        </label>
                     </div>
+                    <button type="button" class="btn" data-add-cart="${article.id}" data-unit-price="${article.prix}" data-title="${escapeHtml(article.title)}">Ajouter au panier</button>
                     <p class="reserve-msg" data-reserve-msg="${article.id}"></p>
                 </div>
             `;
@@ -160,6 +207,16 @@
 
             const { data: { session } } = await sb.auth.getSession();
             const userId = session ? session.user.id : null;
+            const { data: isAdmin } = await sb.rpc("is_admin");
+
+            const cartLink = document.getElementById("cartLink");
+            if (cartLink) {
+                if (isAdmin) {
+                    cartLink.style.display = "none";
+                } else {
+                    updateCartLink();
+                }
+            }
 
             const { data, error } = await sb
                 .from("articles")
@@ -185,9 +242,10 @@
                     <h2>${escapeHtml(film.title)}</h2>
                     <p>${film.description ? escapeHtml(film.description) : ""}</p>
                     ${film.date_representation ? `<p><strong>1ère représentation :</strong> ${escapeHtml(formatDateFR(film.date_representation))}</p>` : ""}
+                    ${film.lieu ? `<p><strong>Lieu :</strong> ${escapeHtml(film.lieu)}</p>` : ""}
                     <p><strong>${escapeHtml(formatPrice(film.prix))}</strong> la place</p>
                     ${film.trailer_url ? `<a class="btn" href="cellule_cinema.html?id=${encodeURIComponent(film.id)}">Bande-Annonce</a>` : ""}
-                    ${reservationBlock(film, userId)}
+                    ${reservationBlock(film, userId, isAdmin)}
                 </div>
             `).join("");
 
@@ -195,34 +253,21 @@
                 sb.rpc("increment_views", { article_id: film.id });
             });
 
-            container.querySelectorAll("[data-reserve-btn]").forEach(btn => {
-                btn.addEventListener("click", async () => {
-                    const articleId = btn.dataset.reserveBtn;
+            container.querySelectorAll("[data-add-cart]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const articleId = btn.dataset.addCart;
                     const unitPrice = parseFloat(btn.dataset.unitPrice);
+                    const title = btn.dataset.title;
                     const qtyInput = container.querySelector(`input[data-qty-for="${articleId}"]`);
+                    const minorsInput = container.querySelector(`input[data-minors-for="${articleId}"]`);
                     const msgEl = container.querySelector(`[data-reserve-msg="${articleId}"]`);
+
                     const quantity = Math.max(1, parseInt(qtyInput.value) || 1);
+                    let minors = Math.max(0, parseInt(minorsInput.value) || 0);
+                    if (minors > quantity) minors = quantity;
 
-                    btn.disabled = true;
-                    btn.textContent = "Réservation...";
-
-                    const { error } = await sb.from("ticket_reservations").insert({
-                        article_id: articleId,
-                        user_id: userId,
-                        quantity,
-                        unit_price: unitPrice
-                    });
-
-                    if (error) {
-                        msgEl.textContent = "Erreur : " + error.message;
-                        btn.disabled = false;
-                        btn.textContent = "Réserver";
-                    } else {
-                        const total = formatPrice(quantity * unitPrice);
-                        msgEl.textContent = `${quantity} place(s) réservée(s). Prévoyez ${total} en liquide, à régler sur place avant la séance.`;
-                        btn.textContent = "Réserver";
-                        btn.disabled = false;
-                    }
+                    addToCart({ article_id: articleId, title, unit_price: unitPrice, quantity, minors });
+                    msgEl.textContent = "Ajouté au panier.";
                 });
             });
         }

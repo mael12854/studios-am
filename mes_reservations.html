@@ -14,6 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
         body { text-align: center; }
 
@@ -64,6 +66,13 @@
         }
 
         .res-card .badge.paid { background: var(--sage); }
+
+        .res-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: .5rem;
+        }
     </style>
 </head>
 <body>
@@ -109,6 +118,69 @@
             return Number(num).toFixed(2).replace(".", ",") + " €";
         }
 
+        function lineAmount(r) {
+            return (r.quantity - (r.minors || 0)) * r.unit_price;
+        }
+
+        const SITE_URL = "https://studios-am.vercel.app";
+
+        async function generateTicketPdf(r, clientName) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: "mm", format: "a5" });
+
+            const gold = [189, 155, 71];
+            const ink = [26, 24, 22];
+            const muted = [120, 110, 100];
+
+            doc.setFont("times", "bold");
+            doc.setFontSize(18);
+            doc.setTextColor(...ink);
+            doc.text("Les studios a&m", 10, 15);
+
+            doc.setFont("times", "normal");
+            doc.setFontSize(11);
+            doc.setTextColor(...gold);
+            doc.text("Billet de réservation", 10, 22);
+
+            doc.setDrawColor(...gold);
+            doc.line(10, 26, 138, 26);
+
+            doc.setTextColor(...ink);
+            doc.setFont("times", "bold");
+            doc.setFontSize(13);
+            doc.text(r.articles ? r.articles.title : "Événement", 10, 36);
+
+            doc.setFont("times", "normal");
+            doc.setFontSize(10);
+            let y = 44;
+            const eventDate = r.articles && r.articles.date_representation ? formatDateFR(r.articles.date_representation) : "à confirmer";
+            doc.text(`Date : ${eventDate}`, 10, y);
+            y += 6;
+            const lieu = r.articles && r.articles.lieu ? r.articles.lieu : "à confirmer, voir le site";
+            doc.text(`Lieu : ${lieu}`, 10, y, { maxWidth: 80 });
+            y += 6;
+            doc.text(`Titulaire : ${clientName}`, 10, y);
+            y += 6;
+            doc.text(`Places : ${r.quantity} (dont ${r.minors || 0} mineur(s), gratuit)`, 10, y);
+            y += 6;
+            doc.text(`A régler en liquide sur place : ${formatPrice(lineAmount(r))}`, 10, y);
+            y += 6;
+            doc.text(`Statut : ${r.paid ? "payé" : "à régler avant la séance"}`, 10, y);
+
+            doc.setTextColor(...muted);
+            doc.setFontSize(8);
+            doc.text("Ce billet n'est valable qu'une fois : il sera contrôlé et validé par Abel ou Maël à l'entrée.", 10, 78, { maxWidth: 118 });
+
+            const validationUrl = `${SITE_URL}/admin/validation.html?id=${r.id}`;
+            try {
+                const qrDataUrl = await QRCode.toDataURL(validationUrl, { margin: 1, width: 220 });
+                doc.addImage(qrDataUrl, "PNG", 93, 36, 36, 36);
+            } catch (e) {}
+
+            const safeTitle = (r.articles ? r.articles.title : "reservation").toLowerCase().replace(/[^a-z0-9]+/gi, "-");
+            doc.save(`billet-${safeTitle}.pdf`);
+        }
+
         (async () => {
             const { data: { session } } = await sb.auth.getSession();
 
@@ -117,12 +189,15 @@
                 return;
             }
 
+            const meta = session.user.user_metadata || {};
+            const clientName = (meta.prenom && meta.nom) ? `${meta.prenom} ${meta.nom}` : session.user.email;
+
             const dueTotalEl = document.getElementById("dueTotal");
             const resListEl = document.getElementById("resList");
 
             const { data, error } = await sb
                 .from("ticket_reservations")
-                .select("*, articles(title, date_representation)")
+                .select("*, articles(title, date_representation, lieu)")
                 .eq("user_id", session.user.id)
                 .order("created_at", { ascending: false });
 
@@ -139,7 +214,7 @@
 
             const totalDue = data
                 .filter(r => !r.paid)
-                .reduce((sum, r) => sum + r.quantity * r.unit_price, 0);
+                .reduce((sum, r) => sum + lineAmount(r), 0);
 
             if (totalDue > 0) {
                 dueTotalEl.innerHTML = `
@@ -155,11 +230,22 @@
                     <div class="res-info">
                         <h3>${escapeHtml(r.articles ? r.articles.title : "Événement")}</h3>
                         ${r.articles && r.articles.date_representation ? `<p>${escapeHtml(formatDateFR(r.articles.date_representation))}</p>` : ""}
-                        <p>${r.quantity} place(s) &middot; ${escapeHtml(formatPrice(r.quantity * r.unit_price))}</p>
+                        ${r.articles && r.articles.lieu ? `<p>${escapeHtml(r.articles.lieu)}</p>` : ""}
+                        <p>${r.quantity} place(s), dont ${r.minors || 0} mineur(s) &middot; ${escapeHtml(formatPrice(lineAmount(r)))}</p>
                     </div>
-                    <span class="badge ${r.paid ? "paid" : "prevision"}"><span class="dot"></span>${r.paid ? "Payé" : "À régler"}</span>
+                    <div class="res-actions">
+                        <span class="badge ${r.paid ? "paid" : "prevision"}"><span class="dot"></span>${r.paid ? "Payé" : "À régler"}</span>
+                        <button type="button" class="btn" data-pdf-btn="${r.id}">Billet PDF</button>
+                    </div>
                 </div>
             `).join("");
+
+            resListEl.querySelectorAll("[data-pdf-btn]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const r = data.find(item => item.id === btn.dataset.pdfBtn);
+                    if (r) generateTicketPdf(r, clientName);
+                });
+            });
         })();
 
         (function () {

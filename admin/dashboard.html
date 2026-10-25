@@ -134,6 +134,7 @@
         <nav>
             <a class="btn" href="messages.html">Messages<span id="unreadBadge" class="unread-count"></span></a>
             <a class="btn" href="reservations.html">Réservations</a>
+            <a class="btn" href="validation.html">Contrôle des billets</a>
             <a class="btn" href="documents.html">Documents</a>
             <button class="btn-primary" id="addBtn">+ Ajouter un article</button>
             <button class="btn" id="logoutBtn">Se déconnecter</button>
@@ -187,6 +188,11 @@
                     <label for="prix">Prix par place (€)</label>
                     <input id="prix" type="number" step="0.01" min="0" value="2.00" required>
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label for="lieu">Lieu (adresse affichée sur les billets, optionnel)</label>
+                <input id="lieu" type="text" placeholder="ex: Salle des fêtes, 3 rue des Lilas, 75000 Paris">
             </div>
 
             <div class="form-group">
@@ -333,7 +339,8 @@
                 description: document.getElementById("description").value.trim() || null,
                 image_url: document.getElementById("image_url").value.trim() || null,
                 date_representation: document.getElementById("date_representation").value || null,
-                prix: parseFloat(document.getElementById("prix").value) || 0
+                prix: parseFloat(document.getElementById("prix").value) || 0,
+                lieu: document.getElementById("lieu").value.trim() || null
             };
 
             if (trailerFile) {
@@ -424,6 +431,7 @@
             document.getElementById("image_url").value = article.image_url || "";
             document.getElementById("date_representation").value = article.date_representation || "";
             document.getElementById("prix").value = article.prix || "";
+            document.getElementById("lieu").value = article.lieu || "";
             document.getElementById("trailer_file").value = "";
             const trailerCurrent = document.getElementById("trailerCurrent");
             if (article.trailer_url) {
