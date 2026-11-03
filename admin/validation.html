@@ -119,6 +119,7 @@
         }
 
         .amount-due.is-paid .amount { color: var(--sage); }
+        .amount-due.is-unlimited .amount { color: var(--gold); font-size: 1.5rem; }
 
         #message {
             font-size: .95rem;
@@ -272,19 +273,19 @@
 
             const { data: profiles } = await sb.rpc("get_user_profiles", { user_ids: [r.user_id] });
             const profile = (profiles || [])[0];
-            const clientLabel = profile
+            const clientLabel = r.label || (profile
                 ? (profile.prenom && profile.nom ? `${profile.prenom} ${profile.nom}` : profile.email)
-                : r.user_id;
+                : r.user_id);
 
             const amount = (r.quantity - (r.minors || 0)) * r.unit_price;
 
             messageEl.textContent = "";
             resultEl.style.display = "block";
             resultEl.innerHTML = `
-                <div class="amount-due ${r.paid ? "is-paid" : ""}">
-                    <p>${r.paid ? "Déjà réglé" : "Montant à encaisser en liquide"}</p>
-                    <p class="amount">${escapeHtml(formatPrice(amount))}</p>
-                    ${!r.paid ? `<button type="button" class="btn-primary" id="markPaidBtn">Marquer payé</button>` : ""}
+                <div class="amount-due ${r.unlimited ? "is-unlimited" : (r.paid ? "is-paid" : "")}">
+                    <p>${r.unlimited ? "Billet illimité — accès gratuit" : (r.paid ? "Déjà réglé" : "Montant à encaisser en liquide")}</p>
+                    ${r.unlimited ? "" : `<p class="amount">${escapeHtml(formatPrice(amount))}</p>`}
+                    ${!r.unlimited && !r.paid ? `<button type="button" class="btn-primary" id="markPaidBtn">Marquer payé</button>` : ""}
                 </div>
                 <dl>
                     <dt>Événement</dt><dd>${escapeHtml(r.articles ? r.articles.title : "—")}</dd>
@@ -292,9 +293,9 @@
                     <dt>Lieu</dt><dd>${r.articles && r.articles.lieu ? escapeHtml(r.articles.lieu) : "—"}</dd>
                     <dt>Client</dt><dd>${escapeHtml(clientLabel)}</dd>
                     <dt>Places</dt><dd>${r.quantity} (dont ${r.minors || 0} mineur(s))</dd>
-                    <dt>Entrée</dt><dd id="checkinStatus">${r.checked_in ? `<span class="status-warn">Déjà contrôlé le ${escapeHtml(formatDateTimeFR(r.checked_in_at))}</span>` : `<span class="status-ok">Pas encore entré</span>`}</dd>
+                    <dt>Entrée</dt><dd id="checkinStatus">${r.unlimited ? `<span class="status-ok">Illimité — entrées multiples autorisées${r.checked_in_at ? `, dernière le ${escapeHtml(formatDateTimeFR(r.checked_in_at))}` : ""}</span>` : (r.checked_in ? `<span class="status-warn">Déjà contrôlé le ${escapeHtml(formatDateTimeFR(r.checked_in_at))}</span>` : `<span class="status-ok">Pas encore entré</span>`)}</dd>
                 </dl>
-                <button type="button" class="btn-primary" id="validateEntryBtn" ${r.checked_in ? "disabled" : ""}>${r.checked_in ? "Déjà validé" : "Valider l'entrée"}</button>
+                <button type="button" class="btn-primary" id="validateEntryBtn" ${(!r.unlimited && r.checked_in) ? "disabled" : ""}>${r.unlimited ? "Valider l'entrée" : (r.checked_in ? "Déjà validé" : "Valider l'entrée")}</button>
                 <button type="button" class="btn" id="scanNextBtn" style="margin-left:.5rem;">Scanner un autre billet</button>
             `;
 
@@ -325,7 +326,7 @@
             }
 
             const btn = document.getElementById("validateEntryBtn");
-            if (!r.checked_in) {
+            if (r.unlimited || !r.checked_in) {
                 btn.addEventListener("click", async () => {
                     btn.disabled = true;
                     btn.textContent = "Validation...";

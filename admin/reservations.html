@@ -55,14 +55,39 @@
         .amount { font-family: var(--font-mono); color: var(--gold); }
 
         .badge.paid { background: var(--sage); }
+        .badge.unlimited { background: var(--gold); color: var(--bg); }
 
-        .actions-cell { display: flex; gap: .5rem; }
+        .actions-cell { display: flex; gap: .5rem; flex-wrap: wrap; }
 
         #message {
             font-size: .9rem;
             margin-bottom: 1rem;
             min-height: 1.2rem;
         }
+
+        #unlimitedForm {
+            margin-bottom: 1.5rem;
+        }
+
+        #unlimitedForm h2 {
+            margin: 0 0 .25rem;
+            font-size: 1.05rem;
+        }
+
+        #unlimitedForm .small-muted {
+            margin: 0 0 1rem;
+            font-size: .85rem;
+            color: var(--ink-muted);
+        }
+
+        #unlimitedForm .form-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        #unlimitedForm .form-group { flex: 1; min-width: 180px; }
 
         .empty-state {
             text-align: center;
@@ -99,6 +124,28 @@
 
     <p id="message" aria-live="polite"></p>
 
+    <section id="unlimitedForm" class="card">
+        <h2>Créer un billet illimité</h2>
+        <p class="small-muted">Un billet gratuit, valable indéfiniment : il peut être scanné et validé à l'entrée autant de fois que nécessaire, sans jamais être refusé comme « déjà utilisé ».</p>
+        <form id="createUnlimitedForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="unlimitedArticle">Événement</label>
+                    <select id="unlimitedArticle" required>
+                        <option value="">Chargement...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="unlimitedLabel">Pour qui ? (optionnel)</label>
+                    <input id="unlimitedLabel" type="text" placeholder="ex: Staff, Martin, invité...">
+                </div>
+                <div class="form-group" style="flex: 0;">
+                    <button type="submit" class="btn-primary">Créer</button>
+                </div>
+            </div>
+        </form>
+    </section>
+
     <table>
         <thead>
             <tr>
@@ -109,11 +156,12 @@
                 <th>Montant</th>
                 <th>Statut</th>
                 <th>Entrée</th>
+                <th>Illimité</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody id="resBody">
-            <tr><td colspan="8">Chargement...</td></tr>
+            <tr><td colspan="9">Chargement...</td></tr>
         </tbody>
     </table>
 
@@ -134,6 +182,8 @@
             return Number(num).toFixed(2).replace(".", ",") + " €";
         }
 
+        let currentUserId = null;
+
         (async () => {
             const { data: { session } } = await sb.auth.getSession();
             if (!session) { window.location.href = "index.html"; return; }
@@ -141,12 +191,62 @@
             const { data: isAdmin } = await sb.rpc("is_admin");
             if (!isAdmin) { await sb.auth.signOut(); window.location.href = "index.html"; return; }
 
+            currentUserId = session.user.id;
+            loadArticlesForUnlimitedForm();
             loadReservations();
         })();
 
         document.getElementById("logoutBtn").addEventListener("click", async () => {
             await sb.auth.signOut();
             window.location.href = "index.html";
+        });
+
+        async function loadArticlesForUnlimitedForm() {
+            const select = document.getElementById("unlimitedArticle");
+
+            const { data, error } = await sb
+                .from("articles")
+                .select("id, title")
+                .order("created_at", { ascending: false });
+
+            if (error || !data || data.length === 0) {
+                select.innerHTML = `<option value="">Aucun événement disponible</option>`;
+                return;
+            }
+
+            select.innerHTML = data.map(a => `<option value="${a.id}">${escapeHtml(a.title)}</option>`).join("");
+        }
+
+        document.getElementById("createUnlimitedForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const articleId = document.getElementById("unlimitedArticle").value;
+            const label = document.getElementById("unlimitedLabel").value.trim() || null;
+
+            if (!articleId) {
+                messageEl.textContent = "Choisissez un événement.";
+                return;
+            }
+
+            const { error } = await sb.from("ticket_reservations").insert({
+                article_id: articleId,
+                user_id: currentUserId,
+                quantity: 1,
+                minors: 0,
+                unit_price: 0,
+                paid: true,
+                paid_at: new Date().toISOString(),
+                unlimited: true,
+                label
+            });
+
+            if (error) {
+                messageEl.textContent = "Erreur : " + error.message;
+            } else {
+                messageEl.textContent = "Billet illimité créé.";
+                document.getElementById("unlimitedLabel").value = "";
+                loadReservations();
+            }
         });
 
         async function loadReservations() {
@@ -158,12 +258,12 @@
                 .order("created_at", { ascending: false });
 
             if (error) {
-                tbody.innerHTML = `<tr><td colspan="8">${escapeHtml(error.message)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9">${escapeHtml(error.message)}</td></tr>`;
                 return;
             }
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Aucune réservation pour l'instant.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Aucune réservation pour l'instant.</td></tr>`;
                 return;
             }
 
@@ -172,17 +272,18 @@
             const profileMap = {};
             (profiles || []).forEach(p => { profileMap[p.id] = p; });
 
-            function clientLabel(userId) {
-                const p = profileMap[userId];
-                if (!p) return userId;
+            function clientLabel(r) {
+                if (r.label) return r.label;
+                const p = profileMap[r.user_id];
+                if (!p) return r.user_id;
                 if (p.prenom && p.nom) return `${p.prenom} ${p.nom}`;
-                return p.email || userId;
+                return p.email || r.user_id;
             }
 
             tbody.innerHTML = data.map(r => `
                 <tr data-id="${r.id}">
                     <td data-label="Événement">${escapeHtml(r.articles ? r.articles.title : "—")}</td>
-                    <td data-label="Client">${escapeHtml(clientLabel(r.user_id))}</td>
+                    <td data-label="Client">${escapeHtml(clientLabel(r))}</td>
                     <td data-label="Places">${r.quantity}</td>
                     <td data-label="Mineurs">${r.minors || 0}</td>
                     <td data-label="Montant" class="amount">${escapeHtml(formatPrice((r.quantity - (r.minors || 0)) * r.unit_price))}</td>
@@ -190,7 +291,10 @@
                         <span class="badge ${r.paid ? "paid" : "prevision"}"><span class="dot"></span>${r.paid ? "Payé" : "À régler"}</span>
                     </td>
                     <td data-label="Entrée">
-                        <span class="badge ${r.checked_in ? "paid" : ""}"><span class="dot"></span>${r.checked_in ? "Entré" : "Pas encore"}</span>
+                        <span class="badge ${r.unlimited ? "unlimited" : (r.checked_in ? "paid" : "")}"><span class="dot"></span>${r.unlimited ? "Illimité" : (r.checked_in ? "Entré" : "Pas encore")}</span>
+                    </td>
+                    <td data-label="Illimité">
+                        <button class="btn" data-action="toggle-unlimited" data-id="${r.id}" data-current="${r.unlimited ? "1" : "0"}">${r.unlimited ? "Retirer" : "Rendre illimité"}</button>
                     </td>
                     <td data-label="Actions" class="actions-cell">
                         ${!r.paid ? `<button class="btn" data-action="mark-paid" data-id="${r.id}">Marquer payé</button>` : ""}
@@ -200,6 +304,10 @@
 
             tbody.querySelectorAll("[data-action='mark-paid']").forEach(btn => {
                 btn.addEventListener("click", () => markPaid(btn.dataset.id));
+            });
+
+            tbody.querySelectorAll("[data-action='toggle-unlimited']").forEach(btn => {
+                btn.addEventListener("click", () => toggleUnlimited(btn.dataset.id, btn.dataset.current === "1"));
             });
         }
 
@@ -213,6 +321,20 @@
                 messageEl.textContent = "Erreur : " + error.message;
             } else {
                 messageEl.textContent = "Réservation marquée payée.";
+                loadReservations();
+            }
+        }
+
+        async function toggleUnlimited(id, current) {
+            const { error } = await sb
+                .from("ticket_reservations")
+                .update({ unlimited: !current })
+                .eq("id", id);
+
+            if (error) {
+                messageEl.textContent = "Erreur : " + error.message;
+            } else {
+                messageEl.textContent = !current ? "Billet rendu illimité." : "Billet remis en mode normal.";
                 loadReservations();
             }
         }

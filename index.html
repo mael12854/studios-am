@@ -15,6 +15,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             text-align: center;
@@ -77,6 +78,28 @@
         </div>
     </div>
 
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        (function () {
+            try {
+                let anonId = localStorage.getItem("am-visitor-id");
+                if (!anonId) {
+                    anonId = crypto.randomUUID();
+                    localStorage.setItem("am-visitor-id", anonId);
+                }
+                sb.auth.getSession().then(({ data: { session } }) => {
+                    sb.from("site_visits").insert({
+                        user_id: session ? session.user.id : null,
+                        anon_id: anonId,
+                        page: location.pathname.replace(/^\//, "") || "index.html"
+                    }).then(() => {});
+                });
+            } catch (e) {}
+        })();
+    </script>
     <script>
         (function () {
             const toggle = document.getElementById('a11yToggle');
