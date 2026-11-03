@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="nuit">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visites du site - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="../icon-192.png">
+    <link rel="shortcut icon" type="image/png" href="../icon-192.png">
+    <link rel="apple-touch-icon" href="../icon-192.png">
+    <meta name="theme-color" content="#161513">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        header h1 { margin: 0; font-size: 1.3rem; }
+        header nav { display: flex; gap: .75rem; flex-wrap: wrap; }
+        header nav a, header nav button { text-decoration: none; }
+
+        .stat-card {
+            max-width: 320px;
+            text-align: center;
+            margin: 0 0 1.5rem;
+        }
+
+        .stat-card p { margin: 0; color: var(--ink-muted); font-size: .9rem; }
+
+        .stat-card .amount {
+            font-family: var(--font-display);
+            font-size: 2.6rem;
+            color: var(--gold);
+            margin: .15rem 0;
+        }
+
+        h2 { font-size: 1.05rem; margin: 2rem 0 .75rem; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        th, td {
+            text-align: left;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--line);
+            font-size: .92rem;
+        }
+
+        th {
+            font-family: var(--font-mono);
+            background: var(--surface-alt);
+            color: var(--ink-muted);
+            font-size: .72rem;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+
+        .count { font-family: var(--font-mono); color: var(--gold); }
+
+        .anon { color: var(--ink-muted); font-style: italic; }
+
+        #message {
+            font-size: .9rem;
+            margin-bottom: 1rem;
+            min-height: 1.2rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--ink-muted);
+        }
+
+        .small-muted {
+            font-size: .82rem;
+            color: var(--ink-muted);
+            margin: -.5rem 0 1rem;
+        }
+
+        @media (max-width: 700px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead { display: none; }
+            td { border-bottom: none; padding: .4rem 1rem; }
+            tr { border-bottom: 1px solid var(--line); padding: .75rem 0; }
+            td::before {
+                content: attr(data-label);
+                font-family: var(--font-mono);
+                font-weight: 600;
+                color: var(--ink-muted);
+                display: block;
+                font-size: .72rem;
+                text-transform: uppercase;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Visites du site</h1>
+        <nav>
+            <a class="btn" href="dashboard.html">← Tableau de bord</a>
+            <button class="btn" id="logoutBtn">Se déconnecter</button>
+        </nav>
+    </header>
+
+    <p id="message" aria-live="polite">Chargement...</p>
+
+    <div class="stat-card card" id="todayStat" style="display:none;">
+        <p>Personnes différentes ayant consulté le site aujourd'hui</p>
+        <p class="amount" id="todayCount">—</p>
+    </div>
+
+    <h2>Visiteurs du jour</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Identité</th>
+                <th>Visites aujourd'hui</th>
+                <th>Dernière visite</th>
+            </tr>
+        </thead>
+        <tbody id="todayBody">
+            <tr><td colspan="3">Chargement...</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Historique complet</h2>
+    <p class="small-muted">Les 500 visites les plus récentes, les plus récentes en premier. Une même personne peut apparaître plusieurs fois.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Date et heure</th>
+                <th>Identité</th>
+                <th>Page</th>
+            </tr>
+        </thead>
+        <tbody id="historyBody">
+            <tr><td colspan="3">Chargement...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const messageEl = document.getElementById("message");
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
+        function formatDateTimeFR(iso) {
+            return new Date(iso).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
+        }
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+            await sb.auth.signOut();
+            window.location.href = "index.html";
+        });
+
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { window.location.href = "index.html"; return; }
+
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) { await sb.auth.signOut(); window.location.href = "index.html"; return; }
+
+            loadVisits();
+        })();
+
+        async function loadVisits() {
+            const todayStatEl = document.getElementById("todayStat");
+            const todayCountEl = document.getElementById("todayCount");
+            const todayBody = document.getElementById("todayBody");
+            const historyBody = document.getElementById("historyBody");
+
+            const { data, error } = await sb
+                .from("site_visits")
+                .select("*")
+                .order("created_at", { ascending: false })
+                .limit(500);
+
+            if (error) {
+                messageEl.textContent = "Erreur : " + error.message;
+                return;
+            }
+
+            messageEl.textContent = "";
+
+            if (!data || data.length === 0) {
+                todayStatEl.style.display = "none";
+                todayBody.innerHTML = `<tr><td colspan="3" class="empty-state">Aucune visite enregistrée pour l'instant.</td></tr>`;
+                historyBody.innerHTML = `<tr><td colspan="3" class="empty-state">Aucune visite enregistrée pour l'instant.</td></tr>`;
+                return;
+            }
+
+            const userIds = [...new Set(data.filter(v => v.user_id).map(v => v.user_id))];
+            let profileMap = {};
+            if (userIds.length > 0) {
+                const { data: profiles } = await sb.rpc("get_user_profiles", { user_ids: userIds });
+                (profiles || []).forEach(p => { profileMap[p.id] = p; });
+            }
+
+            function identityLabel(visit) {
+                if (visit.user_id) {
+                    const p = profileMap[visit.user_id];
+                    if (p && p.prenom && p.nom) return `${p.prenom} ${p.nom}`;
+                    if (p && p.email) return p.email;
+                    return visit.user_id;
+                }
+                return `Visiteur anonyme (${(visit.anon_id || "?").slice(0, 8)})`;
+            }
+
+            function visitorKey(visit) {
+                return visit.user_id ? `u:${visit.user_id}` : `a:${visit.anon_id}`;
+            }
+
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const todaysVisits = data.filter(v => new Date(v.created_at) >= todayStart);
+
+            const todayGroups = new Map();
+            todaysVisits.forEach(v => {
+                const key = visitorKey(v);
+                if (!todayGroups.has(key)) {
+                    todayGroups.set(key, { visit: v, count: 0, lastSeen: v.created_at });
+                }
+                const group = todayGroups.get(key);
+                group.count += 1;
+                if (new Date(v.created_at) > new Date(group.lastSeen)) group.lastSeen = v.created_at;
+            });
+
+            todayStatEl.style.display = "block";
+            todayCountEl.textContent = todayGroups.size;
+
+            if (todayGroups.size === 0) {
+                todayBody.innerHTML = `<tr><td colspan="3" class="empty-state">Personne n'a encore consulté le site aujourd'hui.</td></tr>`;
+            } else {
+                const rows = [...todayGroups.values()].sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+                todayBody.innerHTML = rows.map(g => `
+                    <tr>
+                        <td data-label="Identité" class="${g.visit.user_id ? "" : "anon"}">${escapeHtml(identityLabel(g.visit))}</td>
+                        <td data-label="Visites aujourd'hui" class="count">${g.count}</td>
+                        <td data-label="Dernière visite">${escapeHtml(formatDateTimeFR(g.lastSeen))}</td>
+                    </tr>
+                `).join("");
+            }
+
+            historyBody.innerHTML = data.map(v => `
+                <tr>
+                    <td data-label="Date et heure">${escapeHtml(formatDateTimeFR(v.created_at))}</td>
+                    <td data-label="Identité" class="${v.user_id ? "" : "anon"}">${escapeHtml(identityLabel(v))}</td>
+                    <td data-label="Page">${escapeHtml(v.page || "—")}</td>
+                </tr>
+            `).join("");
+        }
+    </script>
+</body>
+</html>
