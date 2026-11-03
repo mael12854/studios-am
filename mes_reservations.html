@@ -177,17 +177,26 @@
             const lieu = r.articles && r.articles.lieu ? r.articles.lieu : "à confirmer, voir le site";
             doc.text(`Lieu : ${lieu}`, 10, y, { maxWidth: 80 });
             y += 6;
-            doc.text(`Titulaire : ${clientName}`, 10, y);
+            doc.text(`Titulaire : ${r.label || clientName}`, 10, y);
             y += 6;
             doc.text(`Places : ${r.quantity} (dont ${r.minors || 0} mineur(s), gratuit)`, 10, y);
             y += 6;
-            doc.text(`A régler en liquide sur place : ${formatPrice(lineAmount(r))}`, 10, y);
-            y += 6;
-            doc.text(`Statut : ${r.paid ? "payé" : "à régler avant la séance"}`, 10, y);
+            if (r.unlimited) {
+                doc.text("Billet illimité — accès gratuit, entrées multiples autorisées", 10, y, { maxWidth: 118 });
+            } else {
+                doc.text(`A régler en liquide sur place : ${formatPrice(lineAmount(r))}`, 10, y);
+                y += 6;
+                doc.text(`Statut : ${r.paid ? "payé" : "à régler avant la séance"}`, 10, y);
+            }
 
             doc.setTextColor(...muted);
             doc.setFontSize(8);
-            doc.text("Ce billet n'est valable qu'une fois : il sera contrôlé et validé par Abel ou Maël à l'entrée.", 10, 78, { maxWidth: 118 });
+            doc.text(
+                r.unlimited
+                    ? "Ce billet peut être présenté et contrôlé autant de fois que nécessaire par Abel ou Maël à l'entrée."
+                    : "Ce billet n'est valable qu'une fois : il sera contrôlé et validé par Abel ou Maël à l'entrée.",
+                10, 78, { maxWidth: 118 }
+            );
 
             const validationUrl = `${SITE_URL}/admin/validation.html?id=${r.id}`;
             try {
@@ -249,10 +258,10 @@
                         <h3>${escapeHtml(r.articles ? r.articles.title : "Événement")}</h3>
                         ${r.articles && r.articles.date_representation ? `<p>${escapeHtml(formatDateFR(r.articles.date_representation))}</p>` : ""}
                         ${r.articles && r.articles.lieu ? `<p>${escapeHtml(r.articles.lieu)}</p>` : ""}
-                        <p>${r.quantity} place(s), dont ${r.minors || 0} mineur(s) &middot; ${escapeHtml(formatPrice(lineAmount(r)))}</p>
+                        <p>${r.quantity} place(s), dont ${r.minors || 0} mineur(s)${r.unlimited ? "" : ` &middot; ${escapeHtml(formatPrice(lineAmount(r)))}`}</p>
                     </div>
                     <div class="res-actions">
-                        <span class="badge ${r.paid ? "paid" : "prevision"}"><span class="dot"></span>${r.paid ? "Payé" : "À régler"}</span>
+                        <span class="badge ${r.unlimited ? "paid" : (r.paid ? "paid" : "prevision")}"><span class="dot"></span>${r.unlimited ? "Illimité" : (r.paid ? "Payé" : "À régler")}</span>
                         <button type="button" class="btn" data-pdf-btn="${r.id}">Billet PDF</button>
                     </div>
                 </div>
