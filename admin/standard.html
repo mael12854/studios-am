@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="nuit">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standard - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="../icon-192.png">
+    <link rel="shortcut icon" type="image/png" href="../icon-192.png">
+    <link rel="apple-touch-icon" href="../icon-192.png">
+    <meta name="theme-color" content="#161513">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { text-align: center; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            text-align: left;
+        }
+
+        header h1 { margin: 0; font-size: 1.3rem; }
+        header nav { display: flex; gap: .75rem; flex-wrap: wrap; }
+        header nav a, header nav button { text-decoration: none; }
+
+        #statusCard {
+            max-width: 420px;
+            margin: 0 auto 1.5rem;
+        }
+
+        #statusCard .status-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .6rem;
+            margin-bottom: 1rem;
+        }
+
+        #statusDot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--metal);
+            flex: none;
+        }
+
+        #statusDot.online { background: var(--sage); }
+
+        #message {
+            font-size: .9rem;
+            min-height: 1.2rem;
+            margin-bottom: 1.25rem;
+        }
+
+        #callsList {
+            max-width: 480px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .call-card { text-align: left; }
+
+        .call-card h3 { margin: 0 0 .3rem; font-size: 1rem; }
+
+        .call-card p { margin: 0 0 1rem; color: var(--ink-muted); font-size: .9rem; }
+
+        .call-card .actions { display: flex; gap: .5rem; }
+
+        .call-card .am-decline { border-color: var(--danger); color: var(--danger); }
+        .call-card .am-decline:hover { background: var(--danger); color: var(--bg); }
+
+        #inCallCard {
+            max-width: 420px;
+            margin: 0 auto;
+            display: none;
+        }
+
+        #inCallCard .timer {
+            font-family: var(--font-mono);
+            color: var(--gold);
+            font-size: 1.6rem;
+            margin: .5rem 0 1rem;
+        }
+
+        #inCallCard .am-hangup { border-color: var(--danger); color: var(--danger); }
+        #inCallCard .am-hangup:hover { background: var(--danger); color: var(--bg); }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--ink-muted);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Standard téléphonique</h1>
+        <nav>
+            <a class="btn" href="dashboard.html">← Tableau de bord</a>
+            <button class="btn" id="logoutBtn">Se déconnecter</button>
+        </nav>
+    </header>
+
+    <p id="message" aria-live="polite"></p>
+
+    <div id="statusCard" class="card">
+        <div class="status-line">
+            <span id="statusDot"></span>
+            <span id="statusText">Hors ligne</span>
+        </div>
+        <button type="button" class="btn-primary" id="toggleOnlineBtn">Je prends le standard</button>
+    </div>
+
+    <div id="inCallCard" class="card">
+        <h3>En communication</h3>
+        <p id="inCallWith"></p>
+        <div class="timer" id="inCallTimer">00:00</div>
+        <button type="button" class="btn am-hangup" id="hangupBtn">Raccrocher</button>
+    </div>
+
+    <div id="callsList"></div>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const messageEl = document.getElementById("message");
+        let currentUserId = null;
+        let currentName = "Un conseiller";
+        let online = false;
+
+        let presenceChannel = null;
+        let standardChannel = null;
+        let callChannel = null;
+        let pc = null;
+        let localStream = null;
+        let pendingIce = [];
+        let activeCallId = null;
+
+        const pendingCalls = new Map(); // callId -> { el, timeoutId }
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+            await sb.auth.signOut();
+            window.location.href = "index.html";
+        });
+
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { window.location.href = "index.html"; return; }
+
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) { await sb.auth.signOut(); window.location.href = "index.html"; return; }
+
+            currentUserId = session.user.id;
+            const meta = session.user.user_metadata || {};
+            currentName = (meta.prenom && meta.nom) ? `${meta.prenom} ${meta.nom}` : session.user.email;
+
+            renderEmptyCalls();
+        })();
+
+        function renderEmptyCalls() {
+            if (pendingCalls.size === 0) {
+                document.getElementById("callsList").innerHTML = online
+                    ? `<p class="empty-state">En attente d'un appel...</p>`
+                    : "";
+            }
+        }
+
+        /* ---- sonnerie (Web Audio, generee) ---- */
+        let ringCtx = null, ringIntervalId = null;
+        function startRinging() {
+            if (ringIntervalId) return;
+            try {
+                ringCtx = new (window.AudioContext || window.webkitAudioContext)();
+                ringIntervalId = setInterval(() => {
+                    if (!ringCtx) return;
+                    [880, 988].forEach((freq, i) => {
+                        const osc = ringCtx.createOscillator();
+                        const gain = ringCtx.createGain();
+                        gain.gain.value = 0.06;
+                        osc.type = "sine";
+                        osc.frequency.value = freq;
+                        osc.connect(gain);
+                        gain.connect(ringCtx.destination);
+                        const start = ringCtx.currentTime + i * 0.15;
+                        osc.start(start);
+                        osc.stop(start + 0.14);
+                    });
+                }, 1000);
+            } catch (e) {}
+        }
+        function stopRinging() {
+            if (ringIntervalId) clearInterval(ringIntervalId);
+            ringIntervalId = null;
+            if (ringCtx) { try { ringCtx.close(); } catch (e) {} ringCtx = null; }
+        }
+        function updateRinging() {
+            if (pendingCalls.size > 0 && !activeCallId) startRinging();
+            else stopRinging();
+        }
+
+        function notifyIncomingCall(choice) {
+            try {
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification("Appel entrant — Les studios A&M", {
+                        body: `Un visiteur appelle (choix : ${choice})`
+                    });
+                }
+            } catch (e) {}
+        }
+
+        document.getElementById("toggleOnlineBtn").addEventListener("click", async () => {
+            if (online) {
+                await goOffline();
+            } else {
+                await goOnline();
+            }
+        });
+
+        async function goOnline() {
+            try {
+                if ("Notification" in window && Notification.permission === "default") {
+                    await Notification.requestPermission();
+                }
+            } catch (e) {}
+
+            presenceChannel = sb.channel("standard-presence", { config: { presence: { key: currentUserId } } });
+            await new Promise((resolve) => {
+                presenceChannel.subscribe(async (status) => {
+                    if (status === "SUBSCRIBED") {
+                        await presenceChannel.track({ name: currentName, online_at: new Date().toISOString() });
+                        resolve();
+                    }
+                });
+            });
+
+            standardChannel = sb.channel("standard-broadcast");
+            standardChannel.on("broadcast", { event: "call_request" }, (msg) => {
+                addCallCard(msg.payload);
+            });
+            standardChannel.on("broadcast", { event: "call_taken" }, (msg) => {
+                if (msg.payload.adminId === currentUserId) return;
+                removeCallCard(msg.payload.callId);
+            });
+            await new Promise((resolve) => {
+                standardChannel.subscribe((status) => { if (status === "SUBSCRIBED") resolve(); });
+            });
+
+            online = true;
+            document.getElementById("statusDot").classList.add("online");
+            document.getElementById("statusText").textContent = "En ligne au standard";
+            document.getElementById("toggleOnlineBtn").textContent = "Quitter le standard";
+            renderEmptyCalls();
+        }
+
+        async function goOffline() {
+            if (activeCallId) endCall("Vous êtes passé hors ligne.");
+            pendingCalls.forEach((call) => clearTimeout(call.timeoutId));
+            pendingCalls.clear();
+            updateRinging();
+            document.getElementById("callsList").innerHTML = "";
+
+            if (presenceChannel) { await presenceChannel.untrack(); sb.removeChannel(presenceChannel); presenceChannel = null; }
+            if (standardChannel) { sb.removeChannel(standardChannel); standardChannel = null; }
+
+            online = false;
+            document.getElementById("statusDot").classList.remove("online");
+            document.getElementById("statusText").textContent = "Hors ligne";
+            document.getElementById("toggleOnlineBtn").textContent = "Je prends le standard";
+        }
+
+        function addCallCard(payload) {
+            if (pendingCalls.has(payload.callId)) return;
+
+            const listEl = document.getElementById("callsList");
+            const emptyHint = listEl.querySelector(".empty-state");
+            if (emptyHint) emptyHint.remove();
+
+            const el = document.createElement("div");
+            el.className = "call-card card";
+            el.innerHTML = `
+                <h3>📞 Un visiteur appelle</h3>
+                <p>${escapeHtml(payload.visitorLabel)} — choix : ${escapeHtml(payload.choice)}</p>
+                <div class="actions">
+                    <button type="button" class="btn-primary" data-action="pickup">Décrocher</button>
+                    <button type="button" class="btn am-decline" data-action="decline">Refuser</button>
+                </div>
+            `;
+            listEl.appendChild(el);
+
+            const timeoutId = setTimeout(() => removeCallCard(payload.callId), 30000);
+            pendingCalls.set(payload.callId, { el, timeoutId, payload });
+
+            el.querySelector('[data-action="pickup"]').addEventListener("click", () => pickupCall(payload.callId));
+            el.querySelector('[data-action="decline"]').addEventListener("click", () => removeCallCard(payload.callId));
+
+            notifyIncomingCall(payload.choice);
+            updateRinging();
+        }
+
+        function removeCallCard(callId) {
+            const call = pendingCalls.get(callId);
+            if (!call) return;
+            clearTimeout(call.timeoutId);
+            call.el.remove();
+            pendingCalls.delete(callId);
+            renderEmptyCalls();
+            updateRinging();
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
+        async function pickupCall(callId) {
+            if (activeCallId) return;
+            const call = pendingCalls.get(callId);
+            if (!call) return;
+
+            clearTimeout(call.timeoutId);
+            call.el.remove();
+            pendingCalls.delete(callId);
+            renderEmptyCalls();
+            updateRinging();
+
+            activeCallId = callId;
+            updateRinging();
+            pendingIce = [];
+
+            callChannel = sb.channel("call-" + callId);
+            callChannel.on("broadcast", { event: "offer" }, async (msg) => {
+                await handleOffer(msg.payload.sdp);
+            });
+            callChannel.on("broadcast", { event: "ice" }, (msg) => {
+                if (!pc) return;
+                if (pc.remoteDescription) {
+                    pc.addIceCandidate(new RTCIceCandidate(msg.payload.candidate)).catch(() => {});
+                } else {
+                    pendingIce.push(msg.payload.candidate);
+                }
+            });
+            callChannel.on("broadcast", { event: "hangup" }, () => {
+                endCall("Le visiteur a raccroché.");
+            });
+
+            await new Promise((resolve) => { callChannel.subscribe((status) => { if (status === "SUBSCRIBED") resolve(); }); });
+
+            standardChannel.send({
+                type: "broadcast",
+                event: "call_taken",
+                payload: { callId, adminId: currentUserId }
+            });
+
+            document.getElementById("inCallWith").textContent = `Visiteur : ${call.payload.visitorLabel}`;
+            document.getElementById("inCallCard").style.display = "block";
+        }
+
+        async function handleOffer(sdp) {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (e) {
+                messageEl.textContent = "Impossible d'accéder au micro : " + e.message;
+                return;
+            }
+
+            pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+            localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+            pc.ontrack = (event) => playRemoteAudio(event.streams[0]);
+            pc.onicecandidate = (event) => {
+                if (event.candidate && callChannel) {
+                    callChannel.send({ type: "broadcast", event: "ice", payload: { candidate: event.candidate } });
+                }
+            };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            pendingIce.forEach((c) => pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {}));
+            pendingIce = [];
+
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            callChannel.send({ type: "broadcast", event: "answer", payload: { sdp: answer } });
+
+            startCallTimer();
+        }
+
+        let remoteAudioEl = null;
+        function playRemoteAudio(stream) {
+            if (!remoteAudioEl) {
+                remoteAudioEl = document.createElement("audio");
+                remoteAudioEl.autoplay = true;
+                document.body.appendChild(remoteAudioEl);
+            }
+            remoteAudioEl.srcObject = stream;
+        }
+
+        let callStartedAt = null, callTimerId = null;
+        function startCallTimer() {
+            callStartedAt = Date.now();
+            callTimerId = setInterval(() => {
+                const secs = Math.floor((Date.now() - callStartedAt) / 1000);
+                const mm = String(Math.floor(secs / 60)).padStart(2, "0");
+                const ss = String(secs % 60).padStart(2, "0");
+                document.getElementById("inCallTimer").textContent = `${mm}:${ss}`;
+            }, 1000);
+        }
+        function stopCallTimer() {
+            if (callTimerId) clearInterval(callTimerId);
+            callTimerId = null;
+            document.getElementById("inCallTimer").textContent = "00:00";
+        }
+
+        document.getElementById("hangupBtn").addEventListener("click", () => endCall("Appel terminé."));
+
+        function endCall(statusText) {
+            stopCallTimer();
+            if (pc) {
+                try {
+                    if (callChannel) callChannel.send({ type: "broadcast", event: "hangup", payload: {} });
+                } catch (e) {}
+                try { pc.close(); } catch (e) {}
+                pc = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach((t) => t.stop());
+                localStream = null;
+            }
+            if (callChannel) { sb.removeChannel(callChannel); callChannel = null; }
+            if (remoteAudioEl) remoteAudioEl.srcObject = null;
+            activeCallId = null;
+            document.getElementById("inCallCard").style.display = "none";
+            messageEl.textContent = statusText || "";
+            renderEmptyCalls();
+            updateRinging();
+        }
+
+        window.addEventListener("beforeunload", () => {
+            if (presenceChannel) presenceChannel.untrack();
+        });
+    </script>
+</body>
+</html>
