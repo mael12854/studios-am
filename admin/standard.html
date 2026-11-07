@@ -93,6 +93,7 @@
 
         #inCallCard .am-hangup { border-color: var(--danger); color: var(--danger); }
         #inCallCard .am-hangup:hover { background: var(--danger); color: var(--bg); }
+        #inCallCard .actions { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
 
         .empty-state {
             text-align: center;
@@ -124,7 +125,10 @@
         <h3>En communication</h3>
         <p id="inCallWith"></p>
         <div class="timer" id="inCallTimer">00:00</div>
-        <button type="button" class="btn am-hangup" id="hangupBtn">Raccrocher</button>
+        <div class="actions">
+            <button type="button" class="btn" id="holdBtn">Mettre en attente</button>
+            <button type="button" class="btn am-hangup" id="hangupBtn">Raccrocher</button>
+        </div>
     </div>
 
     <div id="callsList"></div>
@@ -146,6 +150,8 @@
         let localStream = null;
         let pendingIce = [];
         let activeCallId = null;
+        let onHold = false;
+        let remoteAudioEl = null;
 
         const pendingCalls = new Map(); // callId -> { el, timeoutId }
 
@@ -351,6 +357,8 @@
                     pendingIce.push(msg.payload.candidate);
                 }
             });
+            callChannel.on("broadcast", { event: "hold" }, () => { applyHold(true); });
+            callChannel.on("broadcast", { event: "resume" }, () => { applyHold(false); });
             callChannel.on("broadcast", { event: "hangup" }, () => {
                 endCall("Le visiteur a raccroché.");
             });
@@ -393,9 +401,53 @@
             callChannel.send({ type: "broadcast", event: "answer", payload: { sdp: answer } });
 
             startCallTimer();
+            document.getElementById("holdBtn").style.display = "inline-block";
         }
 
-        let remoteAudioEl = null;
+        /* ---- musique d'attente (Web Audio, generee) ---- */
+        let holdMusicCtx = null, holdMusicIntervalId = null;
+        function startHoldMusic() {
+            try {
+                holdMusicCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const gain = holdMusicCtx.createGain();
+                gain.gain.value = 0.04;
+                gain.connect(holdMusicCtx.destination);
+                const notes = [440.0, 523.25, 659.25, 523.25];
+                let i = 0;
+                holdMusicIntervalId = setInterval(() => {
+                    if (!holdMusicCtx) return;
+                    const osc = holdMusicCtx.createOscillator();
+                    osc.type = "sine";
+                    osc.frequency.value = notes[i % notes.length];
+                    osc.connect(gain);
+                    osc.start();
+                    osc.stop(holdMusicCtx.currentTime + 0.35);
+                    i++;
+                }, 550);
+            } catch (e) {}
+        }
+        function stopHoldMusic() {
+            if (holdMusicIntervalId) clearInterval(holdMusicIntervalId);
+            holdMusicIntervalId = null;
+            if (holdMusicCtx) { try { holdMusicCtx.close(); } catch (e) {} holdMusicCtx = null; }
+        }
+
+        document.getElementById("holdBtn").addEventListener("click", () => {
+            if (!callChannel || !activeCallId) return;
+            const next = !onHold;
+            callChannel.send({ type: "broadcast", event: next ? "hold" : "resume", payload: {} });
+            applyHold(next);
+        });
+
+        function applyHold(hold) {
+            onHold = hold;
+            if (localStream) localStream.getAudioTracks().forEach((t) => { t.enabled = !hold; });
+            if (remoteAudioEl) remoteAudioEl.muted = hold;
+            document.getElementById("holdBtn").textContent = hold ? "Reprendre l'appel" : "Mettre en attente";
+            messageEl.textContent = hold ? "Appel en attente." : "";
+            if (hold) startHoldMusic(); else stopHoldMusic();
+        }
+
         function playRemoteAudio(stream) {
             if (!remoteAudioEl) {
                 remoteAudioEl = document.createElement("audio");
@@ -425,6 +477,10 @@
 
         function endCall(statusText) {
             stopCallTimer();
+            stopHoldMusic();
+            onHold = false;
+            document.getElementById("holdBtn").style.display = "none";
+            document.getElementById("holdBtn").textContent = "Mettre en attente";
             if (pc) {
                 try {
                     if (callChannel) callChannel.send({ type: "broadcast", event: "hangup", payload: {} });

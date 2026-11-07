@@ -38,6 +38,8 @@
     var pendingIce = [];
     var standardChannel = null;
     var callChannel = null;
+    var onHold = false;
+    var remoteAudioEl = null;
 
     function escapeHtml(str) {
         var div = document.createElement("div");
@@ -136,7 +138,7 @@
             "#amPhoneSubScreen{font-family:var(--font-mono);color:var(--gold);font-size:.95rem;margin-top:.35rem;}",
             "#amDialpad{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem;}",
             "#amDialpad button{padding:.75rem 0;font-family:var(--font-mono);font-size:1.05rem;}",
-            "#amPhoneActions{display:flex;gap:.5rem;justify-content:center;}",
+            "#amPhoneActions{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;}",
             "#amPhoneActions .am-hangup{border-color:var(--danger);color:var(--danger);}",
             "#amPhoneActions .am-hangup:hover{background:var(--danger);color:var(--bg);}",
             "#amVoicemailBox{margin-top:1rem;text-align:left;}",
@@ -169,6 +171,7 @@
                 "</div>" +
                 '<div id="amPhoneActions">' +
                     '<button type="button" class="btn-primary" id="amPickupBtn">Décrocher</button>' +
+                    '<button type="button" class="btn" id="amHoldBtn" style="display:none;">Mettre en attente</button>' +
                     '<button type="button" class="btn am-hangup" id="amHangupBtn" style="display:none;">Raccrocher</button>' +
                 "</div>" +
                 '<div id="amVoicemailBox" style="display:none;"></div>' +
@@ -179,6 +182,7 @@
         overlay.addEventListener("click", function (e) { if (e.target === overlay) closePhone(true); });
         document.getElementById("amPickupBtn").addEventListener("click", startCallSession);
         document.getElementById("amHangupBtn").addEventListener("click", function () { closePhone(true); });
+        document.getElementById("amHoldBtn").addEventListener("click", toggleHold);
         document.getElementById("amDialpad").addEventListener("click", function (e) {
             var btn = e.target.closest("[data-digit]");
             if (btn) handleDigit(btn.dataset.digit);
@@ -197,6 +201,9 @@
     function resetDialUi() {
         document.getElementById("amPickupBtn").style.display = "inline-block";
         document.getElementById("amHangupBtn").style.display = "none";
+        document.getElementById("amHoldBtn").style.display = "none";
+        onHold = false;
+        document.getElementById("amHoldBtn").textContent = "Mettre en attente";
     }
 
     function startCallSession() {
@@ -326,6 +333,12 @@
                 pendingIce.push(msg.payload.candidate);
             }
         });
+        callChannel.on("broadcast", { event: "hold" }, function () {
+            applyHold(true);
+        });
+        callChannel.on("broadcast", { event: "resume" }, function () {
+            applyHold(false);
+        });
         callChannel.on("broadcast", { event: "hangup" }, function () {
             endCallUi("L'appel a été raccroché.");
         });
@@ -386,9 +399,30 @@
         state = "in-call";
         setScreen("En communication.");
         startTimer();
+        document.getElementById("amHoldBtn").style.display = "inline-block";
     }
 
-    var remoteAudioEl = null;
+    function toggleHold() {
+        if (!callChannel || state !== "in-call") return;
+        var next = !onHold;
+        callChannel.send({ type: "broadcast", event: next ? "hold" : "resume", payload: {} });
+        applyHold(next);
+    }
+
+    function applyHold(hold) {
+        onHold = hold;
+        if (localStream) localStream.getAudioTracks().forEach(function (t) { t.enabled = !hold; });
+        if (remoteAudioEl) remoteAudioEl.muted = hold;
+        document.getElementById("amHoldBtn").textContent = hold ? "Reprendre l'appel" : "Mettre en attente";
+        if (hold) {
+            setScreen("Appel en attente.");
+            startHoldMusic();
+        } else {
+            setScreen("En communication.");
+            stopHoldMusic();
+        }
+    }
+
     function playRemoteAudio(stream) {
         if (!remoteAudioEl) {
             remoteAudioEl = document.createElement("audio");
@@ -409,6 +443,9 @@
         stopTimer();
         if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
         stopHoldMusic();
+        onHold = false;
+        var holdBtn = document.getElementById("amHoldBtn");
+        if (holdBtn) { holdBtn.style.display = "none"; holdBtn.textContent = "Mettre en attente"; }
         if (pc) {
             try {
                 if (callChannel && (state === "in-call" || state === "connecting")) {
