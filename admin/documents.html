@@ -138,6 +138,27 @@
         </tbody>
     </table>
 
+    <section id="signaturesSection" class="card" style="margin-top: 2rem;">
+        <h2 style="margin-top:0; font-size: 1.1rem;">Autorisations de droit à l'image — scans signés (privé)</h2>
+        <p class="hint" style="margin-bottom: 1rem;">Réservé aux admins. Jamais affiché sur le site public (contient adresses et signatures).</p>
+
+        <div class="form-row" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end; margin-bottom: 1.5rem;">
+            <div class="form-group" style="flex:1; min-width:200px;">
+                <label for="sigNom">Nom et prénom du signataire</label>
+                <input id="sigNom" type="text" placeholder="ex: Domenech Maël">
+            </div>
+            <div class="form-group" style="flex:1; min-width:200px;">
+                <label for="sigFile">Scan du document signé (photo ou PDF)</label>
+                <input id="sigFile" type="file" accept="image/*,application/pdf">
+            </div>
+            <div class="form-group" style="flex:0;">
+                <button type="button" class="btn-primary" id="sigUploadBtn">Ajouter</button>
+            </div>
+        </div>
+
+        <ul id="signaturesList" style="list-style:none; margin:0; padding:0;"></ul>
+    </section>
+
     <script>
         const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
@@ -265,6 +286,101 @@
                 loadDocuments();
             }
         }
+
+        async function loadSignatures() {
+            const listEl = document.getElementById("signaturesList");
+            listEl.innerHTML = "<li class='small-muted'>Chargement...</li>";
+
+            const { data, error } = await sb
+                .from("droit_image_signatures")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            if (error) {
+                listEl.innerHTML = `<li>Erreur : ${escapeHtml(error.message)}</li>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listEl.innerHTML = "<li class='small-muted'>Aucun scan pour l'instant.</li>";
+                return;
+            }
+
+            listEl.innerHTML = data.map(sig => `
+                <li data-sig-id="${sig.id}" style="padding:.5rem 0; border-bottom:1px solid var(--line);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:.75rem;">
+                        <span>${escapeHtml(sig.nom)}</span>
+                        <span style="display:flex; gap:.5rem;">
+                            <button type="button" class="btn" data-view-sig="${sig.id}" data-path="${escapeHtml(sig.storage_path)}">Voir</button>
+                            <button type="button" class="btn btn-danger" data-delete-sig="${sig.id}" data-path="${escapeHtml(sig.storage_path)}">Supprimer</button>
+                        </span>
+                    </div>
+                </li>
+            `).join("");
+
+            listEl.querySelectorAll("[data-view-sig]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const { data: signed, error: signError } = await sb.storage
+                        .from("droit-image-signatures")
+                        .createSignedUrl(btn.dataset.path, 300);
+                    if (signError) {
+                        messageEl.textContent = "Erreur : " + signError.message;
+                        return;
+                    }
+                    window.open(signed.signedUrl, "_blank", "noopener");
+                });
+            });
+
+            listEl.querySelectorAll("[data-delete-sig]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    if (!confirm("Supprimer ce scan signé ?")) return;
+                    await sb.storage.from("droit-image-signatures").remove([btn.dataset.path]);
+                    await sb.from("droit_image_signatures").delete().eq("id", btn.dataset.deleteSig);
+                    loadSignatures();
+                });
+            });
+        }
+
+        document.getElementById("sigUploadBtn").addEventListener("click", async () => {
+            const nomInput = document.getElementById("sigNom");
+            const fileInput = document.getElementById("sigFile");
+            const nom = nomInput.value.trim();
+            const file = fileInput.files[0];
+            const btn = document.getElementById("sigUploadBtn");
+
+            if (!nom || !file) {
+                messageEl.textContent = "Indique un nom et choisis un fichier.";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "Envoi...";
+
+            try {
+                const ext = file.name.split(".").pop();
+                const path = `signature-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+                const { error: uploadError } = await sb.storage
+                    .from("droit-image-signatures")
+                    .upload(path, file);
+                if (uploadError) throw uploadError;
+
+                const { error: insertError } = await sb.from("droit_image_signatures").insert({ nom, storage_path: path });
+                if (insertError) throw insertError;
+
+                nomInput.value = "";
+                fileInput.value = "";
+                messageEl.textContent = "Scan ajouté.";
+                loadSignatures();
+            } catch (err) {
+                messageEl.textContent = "Erreur : " + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Ajouter";
+            }
+        });
+
+        loadSignatures();
     </script>
 </body>
 </html>
