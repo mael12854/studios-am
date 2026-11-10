@@ -189,8 +189,6 @@
         }
 
         function reservationBlock(article, userId, isAdmin) {
-            if (isAdmin) return "";
-
             const win = reservationWindow(article.date_representation, article.reservations_force_open);
             if (!win) return "";
 
@@ -226,14 +224,7 @@
             const userId = session ? session.user.id : null;
             const { data: isAdmin } = await sb.rpc("is_admin");
 
-            const cartLink = document.getElementById("cartLink");
-            if (cartLink) {
-                if (isAdmin) {
-                    cartLink.style.display = "none";
-                } else {
-                    updateCartLink();
-                }
-            }
+            updateCartLink();
 
             const { data, error } = await sb
                 .from("articles")
