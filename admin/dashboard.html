@@ -58,6 +58,24 @@
 
         textarea { resize: vertical; min-height: 80px; }
 
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: 1rem;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .checkbox-row label {
+            margin: 0;
+            font-variant-caps: normal;
+            font-feature-settings: normal;
+        }
+
         .form-actions {
             display: flex;
             gap: .75rem;
@@ -195,6 +213,11 @@
             <div class="form-group">
                 <label for="lieu">Lieu (adresse affichée sur les billets, optionnel)</label>
                 <input id="lieu" type="text" placeholder="ex: Salle des fêtes, 3 rue des Lilas, 75000 Paris">
+            </div>
+
+            <div class="checkbox-row">
+                <input id="reservations_force_open" type="checkbox">
+                <label for="reservations_force_open">Forcer l'ouverture des réservations dès maintenant (ignore la fenêtre des 3 mois)</label>
             </div>
 
             <div class="form-group">
@@ -342,7 +365,8 @@
                 image_url: document.getElementById("image_url").value.trim() || null,
                 date_representation: document.getElementById("date_representation").value || null,
                 prix: parseFloat(document.getElementById("prix").value) || 0,
-                lieu: document.getElementById("lieu").value.trim() || null
+                lieu: document.getElementById("lieu").value.trim() || null,
+                reservations_force_open: document.getElementById("reservations_force_open").checked
             };
 
             if (trailerFile) {
@@ -434,6 +458,7 @@
             document.getElementById("date_representation").value = article.date_representation || "";
             document.getElementById("prix").value = article.prix || "";
             document.getElementById("lieu").value = article.lieu || "";
+            document.getElementById("reservations_force_open").checked = !!article.reservations_force_open;
             document.getElementById("trailer_file").value = "";
             const trailerCurrent = document.getElementById("trailerCurrent");
             if (article.trailer_url) {

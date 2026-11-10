@@ -174,7 +174,11 @@
             link.textContent = count > 0 ? `Panier (${count})` : "Panier";
         }
 
-        function reservationWindow(isoDate) {
+        function reservationWindow(isoDate, forceOpen) {
+            if (forceOpen) {
+                const eventDate = isoDate ? new Date(isoDate + "T00:00:00") : null;
+                return { eventDate, opensAt: eventDate, isOpen: true };
+            }
             if (!isoDate) return null;
             const eventDate = new Date(isoDate + "T00:00:00");
             const opensAt = new Date(eventDate);
@@ -187,7 +191,7 @@
         function reservationBlock(article, userId, isAdmin) {
             if (isAdmin) return "";
 
-            const win = reservationWindow(article.date_representation);
+            const win = reservationWindow(article.date_representation, article.reservations_force_open);
             if (!win) return "";
 
             if (!win.isOpen) {
