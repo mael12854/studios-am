@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="brand.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <style>
         body { text-align: center; }
 
@@ -142,7 +142,7 @@
 
         const SITE_URL = "https://studios-am.vercel.app";
 
-        async function generateTicketPdf(r, clientName) {
+        async function generateTicketPdf(r, clientName, lieuPrive) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: "mm", format: "a5" });
 
@@ -174,15 +174,18 @@
             const eventDate = r.articles && r.articles.date_representation ? formatDateFR(r.articles.date_representation) : "à confirmer";
             doc.text(`Date : ${eventDate}`, 10, y);
             y += 6;
-            const lieu = r.articles && r.articles.lieu ? r.articles.lieu : "à confirmer, voir le site";
+            const lieu = lieuPrive || (r.articles && r.articles.lieu ? r.articles.lieu : "à confirmer, voir le site");
             doc.text(`Lieu : ${lieu}`, 10, y, { maxWidth: 80 });
             y += 6;
             doc.text(`Titulaire : ${r.label || clientName}`, 10, y);
             y += 6;
             doc.text(`Places : ${r.quantity} (dont ${r.minors || 0} mineur(s), gratuit)`, 10, y);
             y += 6;
+            const isFree = !r.unlimited && Number(r.unit_price) === 0;
             if (r.unlimited) {
                 doc.text("Billet illimité — accès gratuit, entrées multiples autorisées", 10, y, { maxWidth: 118 });
+            } else if (isFree) {
+                doc.text("Entrée gratuite — rien à régler sur place.", 10, y, { maxWidth: 118 });
             } else {
                 doc.text(`A régler en liquide sur place : ${formatPrice(lineAmount(r))}`, 10, y);
                 y += 6;
@@ -239,6 +242,13 @@
                 return;
             }
 
+            const lieuPriveMap = {};
+            const { data: privateRows } = await sb
+                .from("article_private_info")
+                .select("article_id, lieu_prive")
+                .in("article_id", [...new Set(data.map(r => r.article_id))]);
+            (privateRows || []).forEach(p => { if (p.lieu_prive) lieuPriveMap[p.article_id] = p.lieu_prive; });
+
             const totalDue = data
                 .filter(r => !r.paid)
                 .reduce((sum, r) => sum + lineAmount(r), 0);
@@ -252,25 +262,35 @@
                 dueTotalEl.innerHTML = `<p>Vous n'avez rien à payer actuellement.</p>`;
             }
 
-            resListEl.innerHTML = data.map(r => `
+            function statusBadge(r) {
+                if (r.unlimited) return { cls: "paid", label: "Illimité" };
+                if (Number(r.unit_price) === 0) return { cls: "paid", label: "Gratuit" };
+                return r.paid ? { cls: "paid", label: "Payé" } : { cls: "prevision", label: "À régler" };
+            }
+
+            resListEl.innerHTML = data.map(r => {
+                const badge = statusBadge(r);
+                const lieuPrive = lieuPriveMap[r.article_id];
+                return `
                 <div class="res-card card">
                     <div class="res-info">
                         <h3>${escapeHtml(r.articles ? r.articles.title : "Événement")}</h3>
                         ${r.articles && r.articles.date_representation ? `<p>${escapeHtml(formatDateFR(r.articles.date_representation))}</p>` : ""}
-                        ${r.articles && r.articles.lieu ? `<p>${escapeHtml(r.articles.lieu)}</p>` : ""}
-                        <p>${r.quantity} place(s), dont ${r.minors || 0} mineur(s)${r.unlimited ? "" : ` &middot; ${escapeHtml(formatPrice(lineAmount(r)))}`}</p>
+                        ${lieuPrive ? `<p>${escapeHtml(lieuPrive)}</p>` : (r.articles && r.articles.lieu ? `<p>${escapeHtml(r.articles.lieu)}</p>` : "")}
+                        <p>${r.quantity} place(s), dont ${r.minors || 0} mineur(s)${r.unlimited || Number(r.unit_price) === 0 ? "" : ` &middot; ${escapeHtml(formatPrice(lineAmount(r)))}`}</p>
                     </div>
                     <div class="res-actions">
-                        <span class="badge ${r.unlimited ? "paid" : (r.paid ? "paid" : "prevision")}"><span class="dot"></span>${r.unlimited ? "Illimité" : (r.paid ? "Payé" : "À régler")}</span>
+                        <span class="badge ${badge.cls}"><span class="dot"></span>${badge.label}</span>
                         <button type="button" class="btn" data-pdf-btn="${r.id}">Billet PDF</button>
                     </div>
                 </div>
-            `).join("");
+            `;
+            }).join("");
 
             resListEl.querySelectorAll("[data-pdf-btn]").forEach(btn => {
                 btn.addEventListener("click", () => {
                     const r = data.find(item => item.id === btn.dataset.pdfBtn);
-                    if (r) generateTicketPdf(r, clientName);
+                    if (r) generateTicketPdf(r, clientName, lieuPriveMap[r.article_id]);
                 });
             });
         })();

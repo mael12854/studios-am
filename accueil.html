@@ -38,6 +38,12 @@
             font-size: .75rem;
             margin-left: .4rem;
         }
+
+        #waitingScreen {
+            display: none;
+            max-width: 480px;
+            margin: 2rem auto;
+        }
     </style>
 </head>
 <body>
@@ -47,13 +53,20 @@
 
     <img class="mark" src="icon-512-lumiere.png" alt="Image de présentation des studios a&amp;m">
 
-    <nav class="site-nav">
+    <div id="waitingScreen" class="card">
+        <h2>Compte en attente</h2>
+        <p>Ton compte est en attente de validation par les Studios A&amp;M.</p>
+        <p class="small-muted">Tu pourras accéder au site complet une fois ton compte validé par un administrateur.</p>
+    </div>
+
+    <nav class="site-nav" id="siteNav">
         <a href="films.html">Nos films</a>
         <a href="films_en_prevision.html">Films en prévision</a>
         <a href="pieces_de_theatre.html">Nos pièces de théâtre</a>
         <a href="pieces_de_theatre_en_prevision.html">Pièces de théâtre en prévision</a>
         <a href="chat.html">Discuter avec les créateurs<span id="unreadBadge" class="unread"></span></a>
         <a href="mes_reservations.html">Mes réservations</a>
+        <a href="regarder_le_film.html">Regarder le film</a>
         <a href="documents_officiels.html">Documents officiels</a>
         <a href="qui_sommes_nous.html">Qui sommes-nous</a>
     </nav>
@@ -99,6 +112,21 @@
 
             const prenom = session.user.user_metadata?.prenom;
             document.getElementById("welcome").innerText = "Bienvenue " + (prenom || session.user.email);
+
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) {
+                const { data: profile } = await sb
+                    .from("profiles")
+                    .select("valide")
+                    .eq("id", session.user.id)
+                    .maybeSingle();
+
+                if (!profile || !profile.valide) {
+                    document.getElementById("siteNav").style.display = "none";
+                    document.getElementById("waitingScreen").style.display = "block";
+                    return;
+                }
+            }
 
             const { count } = await sb
                 .from("messages")

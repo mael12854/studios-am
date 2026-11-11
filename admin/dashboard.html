@@ -151,12 +151,14 @@
         <h1>Tableau de bord — Les studios a&amp;m</h1>
         <nav>
             <a class="btn" href="messages.html">Messages<span id="unreadBadge" class="unread-count"></span></a>
+            <a class="btn" href="comptes.html">Comptes<span id="pendingBadge" class="unread-count"></span></a>
             <a class="btn" href="reservations.html">Réservations</a>
             <a class="btn" href="validation.html">Contrôle des billets</a>
             <a class="btn" href="visites.html">Visites</a>
             <a class="btn" href="ventes.html">Ventes</a>
             <a class="btn" href="standard.html">Standard</a>
             <a class="btn" href="documents.html">Documents</a>
+            <a class="btn" href="film_prive.html">Film privé</a>
             <button class="btn-primary" id="addBtn">+ Ajouter un article</button>
             <button class="btn" id="logoutBtn">Se déconnecter</button>
         </nav>
@@ -206,14 +208,18 @@
                     <input id="date_representation" type="date">
                 </div>
                 <div class="form-group">
-                    <label for="prix">Prix par place (€)</label>
+                    <label for="prix">Prix par place (€) — 0 = gratuit</label>
                     <input id="prix" type="number" step="0.01" min="0" value="2.00" required>
+                </div>
+                <div class="form-group">
+                    <label for="capacite_max">Jauge max (optionnel, vide = illimité)</label>
+                    <input id="capacite_max" type="number" step="1" min="1" placeholder="ex: 40">
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="lieu">Lieu (adresse affichée sur les billets, optionnel)</label>
-                <input id="lieu" type="text" placeholder="ex: Salle des fêtes, 3 rue des Lilas, 75000 Paris">
+                <label for="lieu">Lieu (adresse publique affichée sur le site et les billets, optionnel)</label>
+                <input id="lieu" type="text" placeholder="ex: Salle des fêtes, 3 rue des Lilas, 75000 Paris — ou « Chez Abel »">
             </div>
 
             <div class="checkbox-row">
@@ -268,6 +274,18 @@
             </div>
             <div class="form-actions">
                 <button type="button" class="btn" id="addGalleryBtn">+ Ajouter à la galerie</button>
+            </div>
+        </div>
+
+        <div id="lieuPriveSection" style="display:none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line);">
+            <h3 style="margin: 0 0 .25rem; font-size: 1rem;">Lieu privé</h3>
+            <p class="small-muted" style="margin: 0 0 .75rem; font-size: .85rem; color: var(--ink-muted);">Adresse précise, visible uniquement par les personnes ayant une réservation pour cet événement (carte « Mes réservations » et billet PDF) et par les admins. N'apparaît jamais sur le site public.</p>
+            <div class="form-group">
+                <label for="lieuPriveInput">Adresse privée (optionnel)</label>
+                <textarea id="lieuPriveInput" placeholder="ex: 12 rue des Peupliers, 75000 Paris, 3ᵉ étage"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" id="saveLieuPriveBtn">Enregistrer le lieu privé</button>
             </div>
         </div>
     </section>
@@ -337,7 +355,29 @@
                 badge.textContent = count;
                 badge.style.display = "inline-block";
             }
+
+            refreshPendingBadge();
+            sb.channel("comptes-en-attente-badge")
+                .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => refreshPendingBadge())
+                .subscribe();
         })();
+
+        async function refreshPendingBadge() {
+            const { count: pendingCount } = await sb
+                .from("profiles")
+                .select("*", { count: "exact", head: true })
+                .eq("valide", false)
+                .eq("refuse", false);
+
+            const pendingBadge = document.getElementById("pendingBadge");
+            if (pendingCount > 0) {
+                pendingBadge.textContent = pendingCount;
+                pendingBadge.style.display = "inline-block";
+            } else {
+                pendingBadge.style.display = "none";
+                pendingBadge.textContent = "";
+            }
+        }
 
         document.getElementById("logoutBtn").addEventListener("click", async () => {
             await sb.auth.signOut();
@@ -351,6 +391,7 @@
             document.getElementById("trailerCurrent").style.display = "none";
             document.getElementById("relatedVideosSection").style.display = "none";
             document.getElementById("gallerySection").style.display = "none";
+            document.getElementById("lieuPriveSection").style.display = "none";
             formSection.classList.add("active");
         });
 
@@ -387,6 +428,7 @@
                 date_representation: document.getElementById("date_representation").value || null,
                 prix: parseFloat(document.getElementById("prix").value) || 0,
                 lieu: document.getElementById("lieu").value.trim() || null,
+                capacite_max: document.getElementById("capacite_max").value.trim() ? parseInt(document.getElementById("capacite_max").value, 10) : null,
                 reservations_force_open: document.getElementById("reservations_force_open").checked
             };
 
@@ -479,6 +521,7 @@
             document.getElementById("date_representation").value = article.date_representation || "";
             document.getElementById("prix").value = article.prix || "";
             document.getElementById("lieu").value = article.lieu || "";
+            document.getElementById("capacite_max").value = article.capacite_max != null ? article.capacite_max : "";
             document.getElementById("reservations_force_open").checked = !!article.reservations_force_open;
             document.getElementById("trailer_file").value = "";
             const trailerCurrent = document.getElementById("trailerCurrent");
@@ -493,6 +536,8 @@
             loadRelatedVideos(article.id);
             document.getElementById("gallerySection").style.display = "block";
             loadGallery(article.id);
+            document.getElementById("lieuPriveSection").style.display = "block";
+            loadLieuPrive(article.id);
             formSection.classList.add("active");
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -698,6 +743,46 @@
                 addBtn.disabled = false;
                 addBtn.textContent = "+ Ajouter à la galerie";
             }
+        });
+
+        async function loadLieuPrive(articleId) {
+            const textarea = document.getElementById("lieuPriveInput");
+            textarea.value = "...";
+
+            const { data, error } = await sb
+                .from("article_private_info")
+                .select("lieu_prive")
+                .eq("article_id", articleId)
+                .maybeSingle();
+
+            if (error) {
+                textarea.value = "";
+                messageEl.textContent = "Erreur de chargement du lieu privé : " + error.message;
+                return;
+            }
+
+            textarea.value = (data && data.lieu_prive) || "";
+        }
+
+        document.getElementById("saveLieuPriveBtn").addEventListener("click", async () => {
+            const articleId = document.getElementById("articleId").value;
+            const saveLieuPriveBtn = document.getElementById("saveLieuPriveBtn");
+            const lieuPrive = document.getElementById("lieuPriveInput").value.trim() || null;
+
+            saveLieuPriveBtn.disabled = true;
+            saveLieuPriveBtn.textContent = "Enregistrement...";
+
+            const { error } = await sb
+                .from("article_private_info")
+                .upsert({ article_id: articleId, lieu_prive: lieuPrive, updated_at: new Date().toISOString() });
+
+            if (error) {
+                messageEl.textContent = "Erreur : " + error.message;
+            } else {
+                messageEl.textContent = "Lieu privé enregistré.";
+            }
+            saveLieuPriveBtn.disabled = false;
+            saveLieuPriveBtn.textContent = "Enregistrer le lieu privé";
         });
 
         async function deleteArticle(id) {

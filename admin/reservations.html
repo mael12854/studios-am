@@ -286,9 +286,9 @@
                     <td data-label="Client">${escapeHtml(clientLabel(r))}</td>
                     <td data-label="Places">${r.quantity}</td>
                     <td data-label="Mineurs">${r.minors || 0}</td>
-                    <td data-label="Montant" class="amount">${escapeHtml(formatPrice((r.quantity - (r.minors || 0)) * r.unit_price))}</td>
+                    <td data-label="Montant" class="amount">${Number(r.unit_price) === 0 ? "Gratuit" : escapeHtml(formatPrice((r.quantity - (r.minors || 0)) * r.unit_price))}</td>
                     <td data-label="Statut">
-                        <span class="badge ${r.paid ? "paid" : "prevision"}"><span class="dot"></span>${r.paid ? "Payé" : "À régler"}</span>
+                        <span class="badge ${r.paid ? "paid" : "prevision"}"><span class="dot"></span>${Number(r.unit_price) === 0 ? "Gratuit" : (r.paid ? "Payé" : "À régler")}</span>
                     </td>
                     <td data-label="Entrée">
                         <span class="badge ${r.unlimited ? "unlimited" : (r.checked_in ? "paid" : "")}"><span class="dot"></span>${r.unlimited ? "Illimité" : (r.checked_in ? "Entré" : "Pas encore")}</span>
