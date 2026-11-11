@@ -102,9 +102,16 @@
             return div.innerHTML;
         }
 
-        function toYoutubeEmbed(url) {
+        function toEmbedUrl(url) {
             try {
                 const u = new URL(url);
+
+                // Rush (rush-videos.vercel.app) : l'URL /embed/<id> est deja prete a l'emploi.
+                if (u.hostname.endsWith("rush-videos.vercel.app")) {
+                    return url;
+                }
+
+                // YouTube (watch?v=, youtu.be/, /embed/) : on reconstruit l'URL d'embed.
                 let id = null;
                 if (u.hostname.includes("youtu.be")) {
                     id = u.pathname.slice(1);
@@ -175,12 +182,12 @@
             }
 
             content.innerHTML = films.map(f => {
-                const embedUrl = toYoutubeEmbed(f.url_video);
+                const embedUrl = toEmbedUrl(f.url_video);
                 return `
                     <div class="player-wrap">
                         <h2>${escapeHtml(f.titre)}</h2>
                         ${embedUrl
-                            ? `<iframe src="${escapeHtml(embedUrl)}" title="${escapeHtml(f.titre)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+                            ? `<iframe src="${escapeHtml(embedUrl)}" title="${escapeHtml(f.titre)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture" allowfullscreen></iframe>`
                             : `<p>Lien vidéo invalide.</p>`}
                     </div>
                 `;
