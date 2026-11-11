@@ -94,7 +94,7 @@
     <div class="cart-list" id="cartList"></div>
 
     <div class="cart-total card" id="cartTotal" style="display:none;">
-        <p>Montant à prévoir en liquide, à régler sur place avant la séance :</p>
+        <p id="cartTotalLabel">Montant à prévoir en liquide, à régler sur place avant la séance :</p>
         <p class="amount" id="cartTotalAmount"></p>
         <button type="button" class="btn-primary" id="validateBtn">Valider la réservation</button>
     </div>
@@ -171,7 +171,7 @@
                 <div class="cart-card card">
                     <div class="cart-info">
                         <h3>${escapeHtml(item.title)}</h3>
-                        <p>${escapeHtml(formatPrice(item.unit_price))} la place &middot; ${escapeHtml(formatPrice(lineTotal(item)))}</p>
+                        <p>${Number(item.unit_price) === 0 ? "Gratuit" : `${escapeHtml(formatPrice(item.unit_price))} la place &middot; ${escapeHtml(formatPrice(lineTotal(item)))}`}</p>
                     </div>
                     <div class="cart-fields">
                         <label>Places <input type="number" min="1" value="${item.quantity}" data-cart-qty="${index}"></label>
@@ -182,7 +182,14 @@
             `).join("");
 
             const total = cart.reduce((sum, item) => sum + lineTotal(item), 0);
-            document.getElementById("cartTotalAmount").textContent = formatPrice(total);
+            const totalLabelEl = document.getElementById("cartTotalLabel");
+            if (total > 0) {
+                totalLabelEl.textContent = "Montant à prévoir en liquide, à régler sur place avant la séance :";
+                document.getElementById("cartTotalAmount").textContent = formatPrice(total);
+            } else {
+                totalLabelEl.textContent = "Réservation gratuite — rien à payer.";
+                document.getElementById("cartTotalAmount").textContent = "";
+            }
             totalEl.style.display = "block";
 
             listEl.querySelectorAll("[data-cart-qty]").forEach(input => {
@@ -229,6 +236,19 @@
                 return;
             }
 
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) {
+                const { data: profile } = await sb
+                    .from("profiles")
+                    .select("valide")
+                    .eq("id", session.user.id)
+                    .maybeSingle();
+                if (!profile || !profile.valide) {
+                    messageEl.textContent = "Votre compte doit d'abord être validé par les Studios A&M avant de pouvoir réserver.";
+                    return;
+                }
+            }
+
             const cart = getCart();
             if (cart.length === 0) return;
 
@@ -246,7 +266,13 @@
             const { error } = await sb.from("ticket_reservations").insert(rows);
 
             if (error) {
-                messageEl.textContent = "Erreur : " + error.message;
+                if (error.message.includes("COMPLET")) {
+                    messageEl.textContent = "Cette séance est complète : il ne reste plus assez de places disponibles. Réduisez le nombre de places ou retirez cet article du panier.";
+                } else if (error.message.toLowerCase().includes("row-level security")) {
+                    messageEl.textContent = "Votre compte doit d'abord être validé par les Studios A&M avant de pouvoir réserver.";
+                } else {
+                    messageEl.textContent = "Erreur : " + error.message;
+                }
                 validateBtn.disabled = false;
                 validateBtn.textContent = "Valider la réservation";
             } else {

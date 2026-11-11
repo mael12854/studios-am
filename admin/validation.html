@@ -278,14 +278,15 @@
                 : r.user_id);
 
             const amount = (r.quantity - (r.minors || 0)) * r.unit_price;
+            const isFree = !r.unlimited && Number(r.unit_price) === 0;
 
             messageEl.textContent = "";
             resultEl.style.display = "block";
             resultEl.innerHTML = `
-                <div class="amount-due ${r.unlimited ? "is-unlimited" : (r.paid ? "is-paid" : "")}">
-                    <p>${r.unlimited ? "Billet illimité — accès gratuit" : (r.paid ? "Déjà réglé" : "Montant à encaisser en liquide")}</p>
-                    ${r.unlimited ? "" : `<p class="amount">${escapeHtml(formatPrice(amount))}</p>`}
-                    ${!r.unlimited && !r.paid ? `<button type="button" class="btn-primary" id="markPaidBtn">Marquer payé</button>` : ""}
+                <div class="amount-due ${r.unlimited || isFree ? "is-unlimited" : (r.paid ? "is-paid" : "")}">
+                    <p>${r.unlimited ? "Billet illimité — accès gratuit" : (isFree ? "Entrée gratuite — rien à encaisser" : (r.paid ? "Déjà réglé" : "Montant à encaisser en liquide"))}</p>
+                    ${r.unlimited || isFree ? "" : `<p class="amount">${escapeHtml(formatPrice(amount))}</p>`}
+                    ${!r.unlimited && !isFree && !r.paid ? `<button type="button" class="btn-primary" id="markPaidBtn">Marquer payé</button>` : ""}
                 </div>
                 <dl>
                     <dt>Événement</dt><dd>${escapeHtml(r.articles ? r.articles.title : "—")}</dd>

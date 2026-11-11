@@ -227,7 +227,7 @@
             return { eventDate, opensAt, isOpen: now >= opensAt && now <= eventDate };
         }
 
-        function reservationBlock(article, userId, isAdmin) {
+        function reservationBlock(article, userId, isAdmin, availability) {
             const win = reservationWindow(article.date_representation, article.reservations_force_open);
             if (!win) return "";
 
@@ -236,12 +236,27 @@
                 return `<div class="reservation"><p class="hint">Réservations ouvertes à partir du ${opensAtLabel}.</p></div>`;
             }
 
+            let remainingHtml = "";
+            let isFull = false;
+            if (availability && availability.capacite_max != null) {
+                const remaining = Math.max(0, availability.capacite_max - (availability.reserved || 0));
+                isFull = remaining <= 0;
+                remainingHtml = isFull
+                    ? `<p class="hint"><strong>Complet.</strong></p>`
+                    : `<p class="hint">${remaining} place${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""} sur ${availability.capacite_max}.</p>`;
+            }
+
+            if (isFull) {
+                return `<div class="reservation">${remainingHtml}</div>`;
+            }
+
             if (!userId) {
-                return `<div class="reservation"><p class="hint"><a href="page_de_connexion.html">Connectez-vous</a> pour réserver des places.</p></div>`;
+                return `<div class="reservation">${remainingHtml}<p class="hint"><a href="page_de_connexion.html">Connectez-vous</a> pour réserver des places.</p></div>`;
             }
 
             return `
                 <div class="reservation">
+                    ${remainingHtml}
                     <div class="reserve-row">
                         <label class="qty-label">Places
                             <input type="number" min="1" value="1" data-qty-for="${article.id}" aria-label="Nombre de places">
@@ -322,6 +337,10 @@
                 galleryMap[m.article_id].push(m);
             });
 
+            const availabilityMap = {};
+            const { data: availRows } = await sb.rpc("get_articles_availability", { article_ids: data.map(f => f.id) });
+            (availRows || []).forEach(a => { availabilityMap[a.article_id] = a; });
+
             container.innerHTML = data.map(film => `
                 <div class="film-card card" data-card-id="${film.id}">
                     <span class="badge prevision"><span class="dot"></span>En prévision</span>
@@ -330,11 +349,11 @@
                     <p>${film.description ? escapeHtml(film.description) : ""}</p>
                     ${film.date_representation ? `<p><strong>1ère représentation :</strong> ${escapeHtml(formatDateFR(film.date_representation))}</p>` : ""}
                     ${film.lieu ? `<p><strong>Lieu :</strong> ${escapeHtml(film.lieu)}</p>` : ""}
-                    <p><strong>${escapeHtml(formatPrice(film.prix))}</strong> la place</p>
+                    <p><strong>${Number(film.prix) === 0 ? "Gratuit" : escapeHtml(formatPrice(film.prix)) + " la place"}</strong></p>
                     ${film.trailer_url ? `<a class="btn" href="cellule_cinema.html?id=${encodeURIComponent(film.id)}">Bande-Annonce</a>` : ""}
                     <button type="button" class="btn" data-share="${film.id}" data-share-title="${escapeHtml(film.title)}">Partager</button>
                     ${galleryStrip(galleryMap[film.id])}
-                    ${reservationBlock(film, userId, isAdmin)}
+                    ${reservationBlock(film, userId, isAdmin, availabilityMap[film.id])}
                 </div>
             `).join("");
 

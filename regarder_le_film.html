@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Regarder le film - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#F6F1E5">
+    <link rel="apple-touch-icon" href="icon-192-lumiere.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { text-align: center; }
+
+        .page-logo { margin: 0 auto 1rem; }
+
+        .state-card {
+            max-width: 480px;
+            margin: 2rem auto;
+            text-align: center;
+        }
+
+        .state-card .btn-row {
+            display: flex;
+            gap: .75rem;
+            justify-content: center;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .player-wrap {
+            max-width: 46rem;
+            margin: 0 auto 1.5rem;
+        }
+
+        .player-wrap iframe {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: none;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            display: block;
+        }
+
+        .player-wrap h2 {
+            font-size: 1.1rem;
+            margin: 0 0 .75rem;
+        }
+    </style>
+</head>
+<body>
+    <img class="page-logo" src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
+
+    <h2>Regarder le film</h2>
+
+    <div id="content">
+        <p>Chargement...</p>
+    </div>
+
+    <a class="btn back" href="accueil.html">Retour à l'accueil</a>
+
+    <div id="a11y-widget">
+        <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
+        <div id="a11yPanel" aria-hidden="true">
+            <button id="fontIncrease" aria-label="Agrandir le texte">A+</button>
+            <button id="fontDecrease" aria-label="Réduire le texte">A-</button>
+            <button id="contrastToggle" aria-label="Activer le contraste élevé">Contraste élevé</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        (function () {
+            try {
+                let anonId = localStorage.getItem("am-visitor-id");
+                if (!anonId) {
+                    anonId = crypto.randomUUID();
+                    localStorage.setItem("am-visitor-id", anonId);
+                }
+                sb.auth.getSession().then(({ data: { session } }) => {
+                    sb.from("site_visits").insert({
+                        user_id: session ? session.user.id : null,
+                        anon_id: anonId,
+                        page: location.pathname.replace(/^\//, "") || "index.html"
+                    }).then(() => {});
+                });
+            } catch (e) {}
+        })();
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
+        function toYoutubeEmbed(url) {
+            try {
+                const u = new URL(url);
+                let id = null;
+                if (u.hostname.includes("youtu.be")) {
+                    id = u.pathname.slice(1);
+                } else if (u.pathname.startsWith("/embed/")) {
+                    id = u.pathname.split("/embed/")[1];
+                } else {
+                    id = u.searchParams.get("v");
+                }
+                if (!id) return null;
+                id = id.split("?")[0].split("&")[0];
+                return `https://www.youtube.com/embed/${id}`;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function render() {
+            const content = document.getElementById("content");
+
+            const { data: { session } } = await sb.auth.getSession();
+
+            if (!session) {
+                content.innerHTML = `
+                    <div class="state-card card">
+                        <p>Connecte-toi ou crée un compte pour accéder à cette page.</p>
+                        <div class="btn-row">
+                            <a class="btn-primary" href="page_de_connexion.html">Se connecter</a>
+                            <a class="btn" href="page_inscription.html">Créer un compte</a>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) {
+                const { data: profile } = await sb
+                    .from("profiles")
+                    .select("valide")
+                    .eq("id", session.user.id)
+                    .maybeSingle();
+
+                if (!profile || !profile.valide) {
+                    content.innerHTML = `
+                        <div class="state-card card">
+                            <p>Ton compte est en attente de validation par les Studios A&amp;M.</p>
+                            <p class="small-muted">Cette page sera accessible une fois ton compte validé.</p>
+                        </div>
+                    `;
+                    return;
+                }
+            }
+
+            const { data: films, error } = await sb
+                .from("films_prives")
+                .select("*")
+                .eq("publie", true)
+                .order("created_at", { ascending: false });
+
+            if (error) {
+                content.innerHTML = `<div class="state-card card"><p>Impossible de charger le film pour le moment.</p></div>`;
+                return;
+            }
+
+            if (!films || films.length === 0) {
+                content.innerHTML = `<div class="state-card card"><p>Aucun film n'est disponible pour l'instant.</p></div>`;
+                return;
+            }
+
+            content.innerHTML = films.map(f => {
+                const embedUrl = toYoutubeEmbed(f.url_video);
+                return `
+                    <div class="player-wrap">
+                        <h2>${escapeHtml(f.titre)}</h2>
+                        ${embedUrl
+                            ? `<iframe src="${escapeHtml(embedUrl)}" title="${escapeHtml(f.titre)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+                            : `<p>Lien vidéo invalide.</p>`}
+                    </div>
+                `;
+            }).join("");
+        }
+
+        render();
+
+        (function () {
+            const toggle = document.getElementById('a11yToggle');
+            const panel = document.getElementById('a11yPanel');
+            const fontIncrease = document.getElementById('fontIncrease');
+            const fontDecrease = document.getElementById('fontDecrease');
+            const contrastToggle = document.getElementById('contrastToggle');
+
+            let fontSize = parseInt(localStorage.getItem('a11y-fontSize')) || 100;
+            let highContrast = localStorage.getItem('a11y-contrast') === 'true';
+
+            function applySettings() {
+                document.documentElement.style.fontSize = fontSize + '%';
+                document.body.classList.toggle('high-contrast', highContrast);
+            }
+            applySettings();
+
+            toggle.addEventListener('click', () => {
+                const isActive = panel.classList.toggle('active');
+                panel.setAttribute('aria-hidden', String(!isActive));
+            });
+
+            fontIncrease.addEventListener('click', () => {
+                fontSize = Math.min(fontSize + 10, 150);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            fontDecrease.addEventListener('click', () => {
+                fontSize = Math.max(fontSize - 10, 80);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            contrastToggle.addEventListener('click', () => {
+                highContrast = !highContrast;
+                localStorage.setItem('a11y-contrast', highContrast);
+                applySettings();
+            });
+        })();
+    </script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js").catch(() => {});
+        }
+    </script>
+
+    <script src="telephone.js"></script>
+
+    <!-- Tawk.to -->
+    <script type="text/javascript">
+    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+    Tawk_API.onLoad = function () { Tawk_API.minimize(); };
+    (async function(){
+        try {
+            if (typeof sb !== "undefined") {
+                const { data: { session } } = await sb.auth.getSession();
+                if (session && session.user) {
+                    const meta = session.user.user_metadata || {};
+                    Tawk_API.visitor = {
+                        name: (meta.prenom && meta.nom) ? `${meta.prenom} ${meta.nom}` : session.user.email,
+                        email: session.user.email
+                    };
+                }
+            }
+        } catch (e) {}
+    })();
+    (function(){
+    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+    s1.async=true;
+    s1.src='https://embed.tawk.to/6adca14d64a87f34797a15fb/1k5mtc5ur';
+    s1.charset='UTF-8';
+    s1.setAttribute('crossorigin','*');
+    s0.parentNode.insertBefore(s1,s0);
+    })();
+    </script>
+</body>
+</html>
