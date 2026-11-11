@@ -267,7 +267,7 @@
 
             if (error) {
                 if (error.message.includes("COMPLET")) {
-                    messageEl.textContent = "Cette séance est complète : il ne reste plus assez de places disponibles. Réduisez le nombre de places ou retirez cet article du panier.";
+                    messageEl.textContent = "Cette séance est complète : il ne reste plus assez de places disponibles. Contactez-nous (chat ou téléphone) pour être inscrit quand même, ou réduisez le nombre de places.";
                 } else if (error.message.toLowerCase().includes("row-level security")) {
                     messageEl.textContent = "Votre compte doit d'abord être validé par les Studios A&M avant de pouvoir réserver.";
                 } else {
