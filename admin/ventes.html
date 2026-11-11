@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="nuit">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ventes - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="../icon-192.png">
+    <link rel="shortcut icon" type="image/png" href="../icon-192.png">
+    <link rel="apple-touch-icon" href="../icon-192.png">
+    <meta name="theme-color" content="#161513">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        header h1 { margin: 0; font-size: 1.3rem; }
+        header nav { display: flex; gap: .75rem; flex-wrap: wrap; }
+        header nav a, header nav button { text-decoration: none; }
+
+        .stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            flex: 1 1 220px;
+            text-align: center;
+            margin: 0;
+        }
+
+        .stat-card p { margin: 0; color: var(--ink-muted); font-size: .9rem; }
+
+        .stat-card .amount {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            color: var(--gold);
+            margin: .15rem 0;
+        }
+
+        h2 { font-size: 1.05rem; margin: 2rem 0 .75rem; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        th, td {
+            text-align: left;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--line);
+            font-size: .92rem;
+        }
+
+        th {
+            font-family: var(--font-mono);
+            background: var(--surface-alt);
+            color: var(--ink-muted);
+            font-size: .72rem;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+
+        .count, .money { font-family: var(--font-mono); color: var(--gold); }
+
+        .status-ok { color: var(--gold); }
+        .status-due { color: #c0634a; }
+
+        #message {
+            font-size: .9rem;
+            margin-bottom: 1rem;
+            min-height: 1.2rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--ink-muted);
+        }
+
+        .small-muted {
+            font-size: .82rem;
+            color: var(--ink-muted);
+            margin: -.5rem 0 1rem;
+        }
+
+        @media (max-width: 700px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead { display: none; }
+            td { border-bottom: none; padding: .4rem 1rem; }
+            tr { border-bottom: 1px solid var(--line); padding: .75rem 0; }
+            td::before {
+                content: attr(data-label);
+                font-family: var(--font-mono);
+                font-weight: 600;
+                color: var(--ink-muted);
+                display: block;
+                font-size: .72rem;
+                text-transform: uppercase;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Ventes</h1>
+        <nav>
+            <a class="btn" href="dashboard.html">← Tableau de bord</a>
+            <button class="btn" id="logoutBtn">Se déconnecter</button>
+        </nav>
+    </header>
+
+    <p id="message" aria-live="polite">Chargement...</p>
+
+    <div class="stats-row" id="statsRow" style="display:none;">
+        <div class="stat-card card">
+            <p>Chiffre d'affaires encaissé</p>
+            <p class="amount" id="totalPaid">—</p>
+        </div>
+        <div class="stat-card card">
+            <p>En attente de paiement</p>
+            <p class="amount" id="totalDue">—</p>
+        </div>
+        <div class="stat-card card">
+            <p>Billets vendus (hors illimités)</p>
+            <p class="amount" id="totalTickets">—</p>
+        </div>
+    </div>
+
+    <h2>Par film / pièce</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Titre</th>
+                <th>Billets</th>
+                <th>Encaissé</th>
+                <th>À régler</th>
+            </tr>
+        </thead>
+        <tbody id="byArticleBody">
+            <tr><td colspan="4">Chargement...</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Détail des réservations</h2>
+    <p class="small-muted">Les 300 réservations les plus récentes, les plus récentes en premier.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Titre</th>
+                <th>Client</th>
+                <th>Qté</th>
+                <th>Montant</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody id="detailBody">
+            <tr><td colspan="6">Chargement...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const messageEl = document.getElementById("message");
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
+        function formatMoney(n) {
+            return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+        }
+
+        function formatDateFR(iso) {
+            return new Date(iso).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" });
+        }
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+            await sb.auth.signOut();
+            window.location.href = "index.html";
+        });
+
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { window.location.href = "index.html"; return; }
+
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) { await sb.auth.signOut(); window.location.href = "index.html"; return; }
+
+            loadVentes();
+        })();
+
+        async function loadVentes() {
+            const statsRow = document.getElementById("statsRow");
+            const byArticleBody = document.getElementById("byArticleBody");
+            const detailBody = document.getElementById("detailBody");
+
+            const { data: reservations, error: resError } = await sb
+                .from("ticket_reservations")
+                .select("*")
+                .order("created_at", { ascending: false })
+                .limit(300);
+
+            if (resError) {
+                messageEl.textContent = "Erreur : " + resError.message;
+                return;
+            }
+
+            const { data: articles, error: artError } = await sb
+                .from("articles")
+                .select("id, title");
+
+            if (artError) {
+                messageEl.textContent = "Erreur : " + artError.message;
+                return;
+            }
+
+            messageEl.textContent = "";
+
+            const articleMap = {};
+            (articles || []).forEach(a => { articleMap[a.id] = a.title; });
+
+            if (!reservations || reservations.length === 0) {
+                statsRow.style.display = "none";
+                byArticleBody.innerHTML = `<tr><td colspan="4" class="empty-state">Aucune réservation enregistrée pour l'instant.</td></tr>`;
+                detailBody.innerHTML = `<tr><td colspan="6" class="empty-state">Aucune réservation enregistrée pour l'instant.</td></tr>`;
+                return;
+            }
+
+            const userIds = [...new Set(reservations.filter(r => r.user_id).map(r => r.user_id))];
+            let profileMap = {};
+            if (userIds.length > 0) {
+                const { data: profiles } = await sb.rpc("get_user_profiles", { user_ids: userIds });
+                (profiles || []).forEach(p => { profileMap[p.id] = p; });
+            }
+
+            function clientLabel(r) {
+                if (r.label) return r.label;
+                const p = profileMap[r.user_id];
+                if (p && p.prenom && p.nom) return `${p.prenom} ${p.nom}`;
+                if (p && p.email) return p.email;
+                return "—";
+            }
+
+            function reservationAmount(r) {
+                if (r.unlimited) return 0;
+                return (r.unit_price || 0) * (r.quantity || 0);
+            }
+
+            let totalPaid = 0;
+            let totalDue = 0;
+            let totalTickets = 0;
+            const byArticle = new Map();
+
+            reservations.forEach(r => {
+                const amount = reservationAmount(r);
+                if (!r.unlimited) {
+                    totalTickets += r.quantity || 0;
+                    if (r.paid) totalPaid += amount;
+                    else totalDue += amount;
+                }
+
+                const key = r.article_id;
+                if (!byArticle.has(key)) {
+                    byArticle.set(key, { title: articleMap[key] || "Article supprimé", tickets: 0, paid: 0, due: 0 });
+                }
+                const group = byArticle.get(key);
+                if (!r.unlimited) {
+                    group.tickets += r.quantity || 0;
+                    if (r.paid) group.paid += amount;
+                    else group.due += amount;
+                }
+            });
+
+            statsRow.style.display = "flex";
+            document.getElementById("totalPaid").textContent = formatMoney(totalPaid);
+            document.getElementById("totalDue").textContent = formatMoney(totalDue);
+            document.getElementById("totalTickets").textContent = totalTickets;
+
+            const articleRows = [...byArticle.values()].sort((a, b) => (b.paid + b.due) - (a.paid + a.due));
+            byArticleBody.innerHTML = articleRows.map(g => `
+                <tr>
+                    <td data-label="Titre">${escapeHtml(g.title)}</td>
+                    <td data-label="Billets" class="count">${g.tickets}</td>
+                    <td data-label="Encaissé" class="money">${formatMoney(g.paid)}</td>
+                    <td data-label="À régler" class="money">${formatMoney(g.due)}</td>
+                </tr>
+            `).join("");
+
+            detailBody.innerHTML = reservations.map(r => `
+                <tr>
+                    <td data-label="Date">${escapeHtml(formatDateFR(r.created_at))}</td>
+                    <td data-label="Titre">${escapeHtml(articleMap[r.article_id] || "Article supprimé")}</td>
+                    <td data-label="Client">${escapeHtml(clientLabel(r))}</td>
+                    <td data-label="Qté" class="count">${r.quantity ?? 0}</td>
+                    <td data-label="Montant" class="money">${r.unlimited ? "—" : formatMoney(reservationAmount(r))}</td>
+                    <td data-label="Statut" class="${r.unlimited ? "" : (r.paid ? "status-ok" : "status-due")}">${r.unlimited ? "Illimité" : (r.paid ? "Payé" : "À régler")}</td>
+                </tr>
+            `).join("");
+        }
+    </script>
+</body>
+</html>

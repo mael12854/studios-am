@@ -154,6 +154,7 @@
             <a class="btn" href="reservations.html">Réservations</a>
             <a class="btn" href="validation.html">Contrôle des billets</a>
             <a class="btn" href="visites.html">Visites</a>
+            <a class="btn" href="ventes.html">Ventes</a>
             <a class="btn" href="standard.html">Standard</a>
             <a class="btn" href="documents.html">Documents</a>
             <button class="btn-primary" id="addBtn">+ Ajouter un article</button>
@@ -250,6 +251,25 @@
                 <button type="button" class="btn" id="addRelatedVideoBtn">+ Ajouter la vidéo</button>
             </div>
         </div>
+
+        <div id="gallerySection" style="display:none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line);">
+            <h3 style="margin: 0 0 .25rem; font-size: 1rem;">Galerie publique</h3>
+            <p class="small-muted" style="margin: 0 0 .75rem; font-size: .85rem; color: var(--ink-muted);">Photos et vidéos visibles par tout le monde, affichées sur la fiche de ce film/pièce.</p>
+            <ul id="galleryList" style="list-style: none; margin: 0 0 1rem; padding: 0;"></ul>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="galleryCaption">Légende (optionnel)</label>
+                    <input id="galleryCaption" type="text" placeholder="ex: Tournage, Avant-première...">
+                </div>
+                <div class="form-group">
+                    <label for="galleryFile">Photo ou vidéo</label>
+                    <input id="galleryFile" type="file" accept="image/*,video/mp4,video/webm,video/quicktime">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" id="addGalleryBtn">+ Ajouter à la galerie</button>
+            </div>
+        </div>
     </section>
 
     <table>
@@ -330,6 +350,7 @@
             document.getElementById("formTitle").textContent = "Ajouter un article";
             document.getElementById("trailerCurrent").style.display = "none";
             document.getElementById("relatedVideosSection").style.display = "none";
+            document.getElementById("gallerySection").style.display = "none";
             formSection.classList.add("active");
         });
 
@@ -470,6 +491,8 @@
             document.getElementById("formTitle").textContent = "Modifier l'article";
             document.getElementById("relatedVideosSection").style.display = "block";
             loadRelatedVideos(article.id);
+            document.getElementById("gallerySection").style.display = "block";
+            loadGallery(article.id);
             formSection.classList.add("active");
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -582,6 +605,98 @@
             } finally {
                 addBtn.disabled = false;
                 addBtn.textContent = "+ Ajouter la vidéo";
+            }
+        });
+
+        // Bucket public : tout le monde peut voir ces fichiers (policies RLS, lecture publique).
+        async function uploadGalleryMedia(file) {
+            const ext = file.name.split(".").pop();
+            const path = `media-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+            const { error } = await sb.storage.from("gallery-media").upload(path, file);
+            if (error) throw error;
+
+            const { data } = sb.storage.from("gallery-media").getPublicUrl(path);
+            return data.publicUrl;
+        }
+
+        async function loadGallery(articleId) {
+            const listEl = document.getElementById("galleryList");
+            listEl.innerHTML = "<li class='small-muted'>Chargement...</li>";
+
+            const { data, error } = await sb
+                .from("article_gallery")
+                .select("*")
+                .eq("article_id", articleId)
+                .order("created_at", { ascending: true });
+
+            if (error) {
+                listEl.innerHTML = `<li>Erreur : ${escapeHtml(error.message)}</li>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listEl.innerHTML = "<li class='small-muted'>Aucun média dans la galerie pour l'instant.</li>";
+                return;
+            }
+
+            listEl.innerHTML = data.map(media => `
+                <li data-media-id="${media.id}" style="padding:.5rem 0; border-bottom:1px solid var(--line);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:.75rem;">
+                        <span>${media.media_type === "video" ? "🎬" : "🖼️"} ${escapeHtml(media.caption || "(sans légende)")}</span>
+                        <button type="button" class="btn btn-danger" data-delete-media="${media.id}" data-path="${escapeHtml(media.media_url)}">Supprimer</button>
+                    </div>
+                </li>
+            `).join("");
+
+            listEl.querySelectorAll("[data-delete-media]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    if (!confirm("Supprimer ce média de la galerie publique ?")) return;
+                    await sb.from("article_gallery").delete().eq("id", btn.dataset.deleteMedia);
+                    const url = new URL(btn.dataset.path);
+                    const path = url.pathname.split("/gallery-media/")[1];
+                    if (path) await sb.storage.from("gallery-media").remove([path]);
+                    loadGallery(articleId);
+                });
+            });
+        }
+
+        document.getElementById("addGalleryBtn").addEventListener("click", async () => {
+            const articleId = document.getElementById("articleId").value;
+            const captionInput = document.getElementById("galleryCaption");
+            const fileInput = document.getElementById("galleryFile");
+            const caption = captionInput.value.trim();
+            const file = fileInput.files[0];
+            const addBtn = document.getElementById("addGalleryBtn");
+
+            if (!file) {
+                messageEl.textContent = "Choisis une photo ou une vidéo pour la galerie.";
+                return;
+            }
+
+            addBtn.disabled = true;
+            addBtn.textContent = "Envoi en cours...";
+
+            try {
+                const mediaUrl = await uploadGalleryMedia(file);
+                const mediaType = file.type.startsWith("video/") ? "video" : "image";
+                const { error } = await sb.from("article_gallery").insert({
+                    article_id: articleId,
+                    media_type: mediaType,
+                    media_url: mediaUrl,
+                    caption: caption || null
+                });
+                if (error) throw error;
+
+                captionInput.value = "";
+                fileInput.value = "";
+                messageEl.textContent = "Média ajouté à la galerie.";
+                loadGallery(articleId);
+            } catch (err) {
+                messageEl.textContent = "Erreur : " + err.message;
+            } finally {
+                addBtn.disabled = false;
+                addBtn.textContent = "+ Ajouter à la galerie";
             }
         });
 

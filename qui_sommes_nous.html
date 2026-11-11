@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Qui sommes-nous : Abel Burkard, Maël Domenech, Martin et Maya, les quatre membres des studios A&amp;M, collectif étudiant de création cinéma et théâtre.">
+    <title>Qui sommes-nous - Les studios a&amp;m</title>
+    <link rel="icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192-lumiere.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#F6F1E5">
+    <link rel="apple-touch-icon" href="icon-192-lumiere.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brand.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { text-align: center; }
+
+        .page-logo { margin: 0 auto 1rem; }
+
+        .intro {
+            max-width: 560px;
+            margin: 0 auto 2rem;
+            color: var(--ink-muted);
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            max-width: 900px;
+            margin: 0 auto 2rem;
+            text-align: left;
+        }
+
+        .member-card {
+            padding: 1.5rem;
+        }
+
+        .member-card .initial {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--gold);
+            color: var(--bg);
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .member-card h3 {
+            margin: 0 0 .25rem;
+            font-size: 1.1rem;
+        }
+
+        .member-card .role {
+            font-family: var(--font-mono);
+            font-size: .75rem;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin: 0 0 .75rem;
+        }
+
+        .member-card p.bio {
+            margin: 0;
+            font-size: .92rem;
+            color: var(--ink-muted);
+        }
+    </style>
+</head>
+<body>
+    <img class="page-logo" src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
+
+    <h2>Qui sommes-nous</h2>
+
+    <p class="intro">Les studios A&amp;M sont un collectif étudiant de création réunissant quatre passionnés de cinéma et de théâtre. Nous écrivons, tournons, jouons et montons nos propres productions, du scénario à la projection.</p>
+
+    <div class="team-grid">
+        <div class="member-card card">
+            <div class="initial">A</div>
+            <h3>Abel Burkard</h3>
+            <p class="role">Réalisation · Jeu</p>
+            <p class="bio">Co-fondateur des studios A&amp;M, impliqué sur la réalisation et devant la caméra.</p>
+        </div>
+        <div class="member-card card">
+            <div class="initial">M</div>
+            <h3>Maël Domenech</h3>
+            <p class="role">Réalisation · Jeu · Site web</p>
+            <p class="bio">Co-fondateur des studios A&amp;M, en charge notamment du site et de la coordination des projets.</p>
+        </div>
+        <div class="member-card card">
+            <div class="initial">M</div>
+            <h3>Martin</h3>
+            <p class="role">Production</p>
+            <p class="bio">Membre du collectif, impliqué dans la préparation et l'organisation des productions.</p>
+        </div>
+        <div class="member-card card">
+            <div class="initial">M</div>
+            <h3>Maya</h3>
+            <p class="role">Production</p>
+            <p class="bio">Membre du collectif, impliquée dans la préparation et l'organisation des productions.</p>
+        </div>
+    </div>
+
+    <a class="btn back" href="accueil.html">Retour à l'accueil</a>
+
+    <div id="a11y-widget">
+        <button id="a11yToggle" aria-label="Options d'accessibilité" title="Options d'accessibilité">♿</button>
+        <div id="a11yPanel" aria-hidden="true">
+            <button id="fontIncrease" aria-label="Agrandir le texte">A+</button>
+            <button id="fontDecrease" aria-label="Réduire le texte">A-</button>
+            <button id="contrastToggle" aria-label="Activer le contraste élevé">Contraste élevé</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://hcvwbvqkbgtmmjkjfhza.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdndidnFrYmd0bW1qa2pmaHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTE2OTQsImV4cCI6MjA5OTE2NzY5NH0.0xEC7Ws9edaUkTDxfC_wvvGBjCbl9Y26VP15vtFsXAQ";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        (function () {
+            try {
+                let anonId = localStorage.getItem("am-visitor-id");
+                if (!anonId) {
+                    anonId = crypto.randomUUID();
+                    localStorage.setItem("am-visitor-id", anonId);
+                }
+                sb.auth.getSession().then(({ data: { session } }) => {
+                    sb.from("site_visits").insert({
+                        user_id: session ? session.user.id : null,
+                        anon_id: anonId,
+                        page: location.pathname.replace(/^\//, "") || "index.html"
+                    }).then(() => {});
+                });
+            } catch (e) {}
+        })();
+    </script>
+    <script>
+        (function () {
+            const toggle = document.getElementById('a11yToggle');
+            const panel = document.getElementById('a11yPanel');
+            const fontIncrease = document.getElementById('fontIncrease');
+            const fontDecrease = document.getElementById('fontDecrease');
+            const contrastToggle = document.getElementById('contrastToggle');
+
+            let fontSize = parseInt(localStorage.getItem('a11y-fontSize')) || 100;
+            let highContrast = localStorage.getItem('a11y-contrast') === 'true';
+
+            function applySettings() {
+                document.documentElement.style.fontSize = fontSize + '%';
+                document.body.classList.toggle('high-contrast', highContrast);
+            }
+            applySettings();
+
+            toggle.addEventListener('click', () => {
+                const isActive = panel.classList.toggle('active');
+                panel.setAttribute('aria-hidden', String(!isActive));
+            });
+
+            fontIncrease.addEventListener('click', () => {
+                fontSize = Math.min(fontSize + 10, 150);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            fontDecrease.addEventListener('click', () => {
+                fontSize = Math.max(fontSize - 10, 80);
+                localStorage.setItem('a11y-fontSize', fontSize);
+                applySettings();
+            });
+
+            contrastToggle.addEventListener('click', () => {
+                highContrast = !highContrast;
+                localStorage.setItem('a11y-contrast', highContrast);
+                applySettings();
+            });
+        })();
+    </script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js").catch(() => {});
+        }
+    </script>
+
+    <script src="telephone.js"></script>
+
+    <!-- Tawk.to -->
+    <script type="text/javascript">
+    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+    Tawk_API.onLoad = function () { Tawk_API.minimize(); };
+    (async function(){
+        try {
+            if (typeof sb !== "undefined") {
+                const { data: { session } } = await sb.auth.getSession();
+                if (session && session.user) {
+                    const meta = session.user.user_metadata || {};
+                    Tawk_API.visitor = {
+                        name: (meta.prenom && meta.nom) ? `${meta.prenom} ${meta.nom}` : session.user.email,
+                        email: session.user.email
+                    };
+                }
+            }
+        } catch (e) {}
+    })();
+    (function(){
+    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+    s1.async=true;
+    s1.src='https://embed.tawk.to/6adca14d64a87f34797a15fb/1k5mtc5ur';
+    s1.charset='UTF-8';
+    s1.setAttribute('crossorigin','*');
+    s0.parentNode.insertBefore(s1,s0);
+    })();
+    </script>
+</body>
+</html>
