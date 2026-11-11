@@ -298,6 +298,7 @@
                     </td>
                     <td data-label="Actions" class="actions-cell">
                         ${!r.paid ? `<button class="btn" data-action="mark-paid" data-id="${r.id}">Marquer payé</button>` : ""}
+                        <button class="btn btn-danger" data-action="delete" data-id="${r.id}">Supprimer</button>
                     </td>
                 </tr>
             `).join("");
@@ -309,6 +310,26 @@
             tbody.querySelectorAll("[data-action='toggle-unlimited']").forEach(btn => {
                 btn.addEventListener("click", () => toggleUnlimited(btn.dataset.id, btn.dataset.current === "1"));
             });
+
+            tbody.querySelectorAll("[data-action='delete']").forEach(btn => {
+                btn.addEventListener("click", () => deleteReservation(btn.dataset.id));
+            });
+        }
+
+        async function deleteReservation(id) {
+            if (!confirm("Supprimer définitivement cette réservation ? Cette action libère les places correspondantes.")) return;
+
+            const { error } = await sb
+                .from("ticket_reservations")
+                .delete()
+                .eq("id", id);
+
+            if (error) {
+                messageEl.textContent = "Erreur : " + error.message;
+            } else {
+                messageEl.textContent = "Réservation supprimée.";
+                loadReservations();
+            }
         }
 
         async function markPaid(id) {
