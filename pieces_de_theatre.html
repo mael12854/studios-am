@@ -237,7 +237,7 @@
                 const remaining = Math.max(0, availability.capacite_max - (availability.reserved || 0));
                 isFull = remaining <= 0;
                 remainingHtml = isFull
-                    ? `<p class="hint"><strong>Complet.</strong></p>`
+                    ? `<p class="hint"><strong>Complet.</strong> Contactez-nous (chat ou téléphone) si vous souhaitez quand même venir : nous pouvons vous inscrire même sans place officielle.</p>`
                     : `<p class="hint">${remaining} place${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""} sur ${availability.capacite_max}.</p>`;
             }
 
