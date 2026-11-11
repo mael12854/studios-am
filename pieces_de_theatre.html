@@ -46,6 +46,40 @@
             margin: 0 auto 1rem;
         }
 
+        .gallery-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+            justify-content: center;
+            margin: 0 0 1rem;
+        }
+
+        .gallery-thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: var(--radius-sm, 6px);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-alt);
+            border: 1px solid var(--line);
+            font-size: 1.4rem;
+            text-decoration: none;
+        }
+
+        .gallery-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .film-card.highlight {
+            outline: 2px solid var(--gold);
+            outline-offset: 4px;
+        }
+
         .reservation {
             margin-top: .75rem;
             padding-top: .75rem;
@@ -217,6 +251,35 @@
             `;
         }
 
+        async function shareArticle(id, title) {
+            const url = `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}`;
+            const shareData = {
+                title: `${title} - Les studios A&M`,
+                text: `Découvrez « ${title} » sur le site des studios A&M.`,
+                url
+            };
+            if (navigator.share) {
+                try { await navigator.share(shareData); } catch (e) {}
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                alert("Lien copié dans le presse-papiers !");
+            } catch (e) {
+                prompt("Copiez ce lien :", url);
+            }
+        }
+
+        function galleryStrip(items) {
+            if (!items || items.length === 0) return "";
+            return `<div class="gallery-strip">${items.map(m => {
+                if (m.media_type === "video") {
+                    return `<a class="gallery-thumb" href="${escapeHtml(m.media_url)}" target="_blank" rel="noopener" title="${escapeHtml(m.caption || "Vidéo")}">🎬</a>`;
+                }
+                return `<a class="gallery-thumb" href="${escapeHtml(m.media_url)}" target="_blank" rel="noopener" title="${escapeHtml(m.caption || "Photo")}"><img src="${escapeHtml(m.media_url)}" alt="${escapeHtml(m.caption || "Photo")}" loading="lazy"></a>`;
+            }).join("")}</div>`;
+        }
+
         async function loadPieces() {
             const container = document.getElementById("piecesList");
 
@@ -243,14 +306,27 @@
                 return;
             }
 
+            const galleryMap = {};
+            const { data: mediaRows } = await sb
+                .from("article_gallery")
+                .select("*")
+                .in("article_id", data.map(p => p.id))
+                .order("created_at", { ascending: true });
+            (mediaRows || []).forEach(m => {
+                if (!galleryMap[m.article_id]) galleryMap[m.article_id] = [];
+                galleryMap[m.article_id].push(m);
+            });
+
             container.innerHTML = data.map(piece => `
-                <div class="film-card card">
-                    ${piece.image_url ? `<img class="poster" src="${escapeHtml(piece.image_url)}" alt="Affiche de ${escapeHtml(piece.title)}">` : ""}
+                <div class="film-card card" data-card-id="${piece.id}">
+                    ${piece.image_url ? `<img class="poster" src="${escapeHtml(piece.image_url)}" alt="Affiche de ${escapeHtml(piece.title)}" loading="lazy">` : ""}
                     <h2>${escapeHtml(piece.title)}</h2>
                     <p>${piece.description ? escapeHtml(piece.description) : ""}</p>
                     ${piece.date_representation ? `<p><strong>Date :</strong> ${escapeHtml(formatDateFR(piece.date_representation))}</p>` : ""}
                     ${piece.lieu ? `<p><strong>Lieu :</strong> ${escapeHtml(piece.lieu)}</p>` : ""}
                     <p><strong>${escapeHtml(formatPrice(piece.prix))}</strong> la place</p>
+                    <button type="button" class="btn" data-share="${piece.id}" data-share-title="${escapeHtml(piece.title)}">Partager</button>
+                    ${galleryStrip(galleryMap[piece.id])}
                     ${reservationBlock(piece, userId, isAdmin)}
                 </div>
             `).join("");
@@ -258,6 +334,19 @@
             data.forEach(piece => {
                 sb.rpc("increment_views", { article_id: piece.id });
             });
+
+            container.querySelectorAll("[data-share]").forEach(btn => {
+                btn.addEventListener("click", () => shareArticle(btn.dataset.share, btn.dataset.shareTitle));
+            });
+
+            const highlightId = new URLSearchParams(location.search).get("id");
+            if (highlightId) {
+                const card = container.querySelector(`[data-card-id="${highlightId}"]`);
+                if (card) {
+                    card.scrollIntoView({ behavior: "smooth", block: "center" });
+                    card.classList.add("highlight");
+                }
+            }
 
             container.querySelectorAll("[data-add-cart]").forEach(btn => {
                 btn.addEventListener("click", () => {
