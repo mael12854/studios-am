@@ -236,6 +236,19 @@
                 return;
             }
 
+            const { data: isAdmin } = await sb.rpc("is_admin");
+            if (!isAdmin) {
+                const { data: profile } = await sb
+                    .from("profiles")
+                    .select("valide")
+                    .eq("id", session.user.id)
+                    .maybeSingle();
+                if (!profile || !profile.valide) {
+                    messageEl.textContent = "Votre compte doit d'abord être validé par les Studios A&M avant de pouvoir réserver.";
+                    return;
+                }
+            }
+
             const cart = getCart();
             if (cart.length === 0) return;
 
@@ -253,9 +266,13 @@
             const { error } = await sb.from("ticket_reservations").insert(rows);
 
             if (error) {
-                messageEl.textContent = error.message.includes("COMPLET")
-                    ? "Cette séance est complète : il ne reste plus assez de places disponibles. Réduisez le nombre de places ou retirez cet article du panier."
-                    : "Erreur : " + error.message;
+                if (error.message.includes("COMPLET")) {
+                    messageEl.textContent = "Cette séance est complète : il ne reste plus assez de places disponibles. Réduisez le nombre de places ou retirez cet article du panier.";
+                } else if (error.message.toLowerCase().includes("row-level security")) {
+                    messageEl.textContent = "Votre compte doit d'abord être validé par les Studios A&M avant de pouvoir réserver.";
+                } else {
+                    messageEl.textContent = "Erreur : " + error.message;
+                }
                 validateBtn.disabled = false;
                 validateBtn.textContent = "Valider la réservation";
             } else {
