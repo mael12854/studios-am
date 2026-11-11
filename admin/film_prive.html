@@ -106,7 +106,7 @@
 
     <section class="card" style="margin-bottom: 1.5rem;">
         <h2 style="margin-top:0; font-size:1.05rem;">Ajouter un film</h2>
-        <p class="small-muted" style="margin:0 0 1rem;">Mets la vidéo en « non répertorié » sur YouTube, puis colle son lien ici. Elle sera intégrée en iframe — jamais hébergée sur le site.</p>
+        <p class="small-muted" style="margin:0 0 1rem;">Colle un lien d'intégration Rush (ex: https://rush-videos.vercel.app/embed/...) ou une vidéo YouTube mise en « non répertorié ». Elle sera intégrée en iframe — jamais hébergée sur le site.</p>
         <form id="filmForm">
             <div class="form-row">
                 <div class="form-group">
@@ -114,8 +114,8 @@
                     <input id="titre" type="text" required>
                 </div>
                 <div class="form-group">
-                    <label for="urlVideo">Lien YouTube (non répertorié)</label>
-                    <input id="urlVideo" type="url" placeholder="https://www.youtube.com/watch?v=..." required>
+                    <label for="urlVideo">Lien Rush ou YouTube (non répertorié)</label>
+                    <input id="urlVideo" type="url" placeholder="https://rush-videos.vercel.app/embed/... ou https://www.youtube.com/watch?v=..." required>
                 </div>
             </div>
             <div class="form-actions" style="margin-top:.75rem;">
