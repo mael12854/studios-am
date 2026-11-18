@@ -110,7 +110,19 @@
                 return;
             }
 
-            const prenom = session.user.user_metadata?.prenom;
+            // Premiere connexion via Google : prenom/nom ne sont pas encore remplis,
+            // mais Google fournit le nom complet. On le decoupe une fois pour toutes
+            // pour que le reste du site (qui lit prenom/nom) fonctionne sans changement.
+            let meta = session.user.user_metadata || {};
+            if ((!meta.prenom || !meta.nom) && (meta.full_name || meta.name)) {
+                const parts = (meta.full_name || meta.name).trim().split(/\s+/);
+                const prenomGoogle = parts[0];
+                const nomGoogle = parts.slice(1).join(" ") || parts[0];
+                const { data: updated } = await sb.auth.updateUser({ data: { prenom: prenomGoogle, nom: nomGoogle } });
+                if (updated?.user) meta = updated.user.user_metadata || meta;
+            }
+
+            const prenom = meta.prenom;
             document.getElementById("welcome").innerText = "Bienvenue " + (prenom || session.user.email);
 
             const { data: isAdmin } = await sb.rpc("is_admin");

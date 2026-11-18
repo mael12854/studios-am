@@ -262,6 +262,37 @@
                 dueTotalEl.innerHTML = `<p>Vous n'avez rien à payer actuellement.</p>`;
             }
 
+            async function addToGoogleWallet(btn) {
+                const r = data.find(item => item.id === btn.dataset.walletBtn);
+                if (!r) return;
+
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = "Préparation...";
+
+                try {
+                    const res = await fetch(`${SUPABASE_URL}/functions/v1/wallet-pass`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${session.access_token}`,
+                            "apikey": SUPABASE_ANON_KEY
+                        },
+                        body: JSON.stringify({ reservation_id: r.id })
+                    });
+                    const result = await res.json();
+                    if (!res.ok || !result.saveUrl) {
+                        throw new Error(result.error || "Erreur inconnue");
+                    }
+                    window.open(result.saveUrl, "_blank");
+                } catch (err) {
+                    alert("Impossible d'ajouter ce billet à Google Wallet : " + err.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            }
+
             function statusBadge(r) {
                 if (r.unlimited) return { cls: "paid", label: "Illimité" };
                 if (Number(r.unit_price) === 0) return { cls: "paid", label: "Gratuit" };
@@ -282,6 +313,7 @@
                     <div class="res-actions">
                         <span class="badge ${badge.cls}"><span class="dot"></span>${badge.label}</span>
                         <button type="button" class="btn" data-pdf-btn="${r.id}">Billet PDF</button>
+                        <button type="button" class="btn" data-wallet-btn="${r.id}">Ajouter à Google Wallet</button>
                     </div>
                 </div>
             `;
@@ -292,6 +324,10 @@
                     const r = data.find(item => item.id === btn.dataset.pdfBtn);
                     if (r) generateTicketPdf(r, clientName, lieuPriveMap[r.article_id]);
                 });
+            });
+
+            resListEl.querySelectorAll("[data-wallet-btn]").forEach(btn => {
+                btn.addEventListener("click", () => addToGoogleWallet(btn));
             });
         })();
 
