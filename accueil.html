@@ -147,7 +147,13 @@
             const prenom = meta.prenom;
             document.getElementById("welcome").innerText = "Bienvenue " + (prenom || session.user.email);
 
-            const avatarUrl = meta.avatar_url || meta.picture;
+            const { data: profile } = await sb
+                .from("profiles")
+                .select("valide, avatar_override")
+                .eq("id", session.user.id)
+                .maybeSingle();
+
+            const avatarUrl = (profile && profile.avatar_override) || meta.avatar_url || meta.picture;
             if (avatarUrl) {
                 const avatarEl = document.getElementById("userAvatar");
                 avatarEl.src = avatarUrl;
@@ -156,12 +162,6 @@
 
             const { data: isAdmin } = await sb.rpc("is_admin");
             if (!isAdmin) {
-                const { data: profile } = await sb
-                    .from("profiles")
-                    .select("valide")
-                    .eq("id", session.user.id)
-                    .maybeSingle();
-
                 if (!profile || !profile.valide) {
                     document.getElementById("siteNav").style.display = "none";
                     document.getElementById("waitingScreen").style.display = "block";
