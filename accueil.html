@@ -27,15 +27,23 @@
             margin: 1rem 0;
         }
 
+        .welcome-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .65rem;
+            flex-wrap: wrap;
+        }
+
         #userAvatar {
             display: none;
-            width: 72px;
-            height: 72px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             object-fit: cover;
             box-shadow: var(--shadow-sm);
             border: 2px solid var(--gold);
-            margin: 0 auto .5rem;
+            flex-shrink: 0;
         }
 
         #logoutBtn { float: right; }
@@ -60,8 +68,10 @@
 <body>
     <button id="logoutBtn" onclick="logout()">Se déconnecter</button>
 
-    <img id="userAvatar" alt="Photo de profil">
-    <h1 id="welcome">Bienvenue</h1>
+    <div class="welcome-row">
+        <img id="userAvatar" alt="Photo de profil">
+        <h1 id="welcome">Bienvenue</h1>
+    </div>
 
     <img class="mark" src="icon-512-lumiere.png" alt="Image de présentation des studios a&amp;m">
 
