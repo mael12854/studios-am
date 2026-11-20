@@ -27,15 +27,35 @@
             margin: 1rem 0;
         }
 
-        #userAvatar {
+        .welcome-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .65rem;
+            flex-wrap: wrap;
+        }
+
+        #userAvatar, .avatar-fallback {
             display: none;
-            width: 72px;
-            height: 72px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
-            object-fit: cover;
             box-shadow: var(--shadow-sm);
             border: 2px solid var(--gold);
-            margin: 0 auto .5rem;
+            flex-shrink: 0;
+        }
+
+        #userAvatar { object-fit: cover; }
+
+        .avatar-fallback {
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-alt);
+            color: var(--gold);
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 1rem;
+            text-transform: uppercase;
         }
 
         #logoutBtn { float: right; }
@@ -60,8 +80,11 @@
 <body>
     <button id="logoutBtn" onclick="logout()">Se déconnecter</button>
 
-    <img id="userAvatar" alt="Photo de profil">
-    <h1 id="welcome">Bienvenue</h1>
+    <div class="welcome-row">
+        <img id="userAvatar" alt="Photo de profil">
+        <span id="userAvatarFallback" class="avatar-fallback"></span>
+        <h1 id="welcome">Bienvenue</h1>
+    </div>
 
     <img class="mark" src="icon-512-lumiere.png" alt="Image de présentation des studios a&amp;m">
 
@@ -142,6 +165,10 @@
                 const avatarEl = document.getElementById("userAvatar");
                 avatarEl.src = avatarUrl;
                 avatarEl.style.display = "block";
+            } else {
+                const fallbackEl = document.getElementById("userAvatarFallback");
+                fallbackEl.textContent = (prenom || session.user.email || "?").charAt(0);
+                fallbackEl.style.display = "flex";
             }
 
             const { data: isAdmin } = await sb.rpc("is_admin");
