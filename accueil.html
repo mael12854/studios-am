@@ -27,6 +27,17 @@
             margin: 1rem 0;
         }
 
+        #userAvatar {
+            display: none;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: var(--shadow-sm);
+            border: 2px solid var(--gold);
+            margin: 0 auto .5rem;
+        }
+
         #logoutBtn { float: right; }
 
         nav.site-nav .unread {
@@ -49,6 +60,7 @@
 <body>
     <button id="logoutBtn" onclick="logout()">Se déconnecter</button>
 
+    <img id="userAvatar" alt="Photo de profil">
     <h1 id="welcome">Bienvenue</h1>
 
     <img class="mark" src="icon-512-lumiere.png" alt="Image de présentation des studios a&amp;m">
@@ -124,6 +136,13 @@
 
             const prenom = meta.prenom;
             document.getElementById("welcome").innerText = "Bienvenue " + (prenom || session.user.email);
+
+            const avatarUrl = meta.avatar_url || meta.picture;
+            if (avatarUrl) {
+                const avatarEl = document.getElementById("userAvatar");
+                avatarEl.src = avatarUrl;
+                avatarEl.style.display = "block";
+            }
 
             const { data: isAdmin } = await sb.rpc("is_admin");
             if (!isAdmin) {
