@@ -120,6 +120,7 @@
     <div class="creator-tabs">
         <button class="creator-tab btn active" id="tabMael" onclick="selectCreator('mael')">Maël Domenech</button>
         <button class="creator-tab btn" id="tabAbel" onclick="selectCreator('abel')">Abel Burkard</button>
+        <button class="creator-tab btn" id="tabStudios" onclick="selectCreator('studios')">Les Studios A&amp;M</button>
     </div>
 
     <div class="chat-box">
@@ -169,7 +170,7 @@
             } catch (e) {}
         })();
 
-        const creatorNames = { mael: "Maël Domenech", abel: "Abel Burkard" };
+        const creatorNames = { mael: "Maël Domenech", abel: "Abel Burkard", studios: "Les Studios A&M" };
         let currentCreator = "mael";
         let currentUserId = null;
         let channel = null;
@@ -190,6 +191,7 @@
             currentCreator = creator;
             document.getElementById("tabMael").classList.toggle("active", creator === "mael");
             document.getElementById("tabAbel").classList.toggle("active", creator === "abel");
+            document.getElementById("tabStudios").classList.toggle("active", creator === "studios");
             document.getElementById("chatHeader").textContent = "Conversation avec " + creatorNames[creator];
             loadConversation();
         }
