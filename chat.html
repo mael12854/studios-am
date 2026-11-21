@@ -30,6 +30,8 @@
             display: flex;
             gap: .75rem;
             margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .creator-tab {
@@ -120,6 +122,8 @@
     <div class="creator-tabs">
         <button class="creator-tab btn active" id="tabMael" onclick="selectCreator('mael')">Maël Domenech</button>
         <button class="creator-tab btn" id="tabAbel" onclick="selectCreator('abel')">Abel Burkard</button>
+        <button class="creator-tab btn" id="tabMaya" onclick="selectCreator('maya')">Maya</button>
+        <button class="creator-tab btn" id="tabMartin" onclick="selectCreator('martin')">Martin</button>
         <button class="creator-tab btn" id="tabStudios" onclick="selectCreator('studios')">Les Studios A&amp;M</button>
     </div>
 
@@ -170,7 +174,7 @@
             } catch (e) {}
         })();
 
-        const creatorNames = { mael: "Maël Domenech", abel: "Abel Burkard", studios: "Les Studios A&M" };
+        const creatorNames = { mael: "Maël Domenech", abel: "Abel Burkard", maya: "Maya", martin: "Martin", studios: "Les Studios A&M" };
         let currentCreator = "mael";
         let currentUserId = null;
         let channel = null;
@@ -191,6 +195,8 @@
             currentCreator = creator;
             document.getElementById("tabMael").classList.toggle("active", creator === "mael");
             document.getElementById("tabAbel").classList.toggle("active", creator === "abel");
+            document.getElementById("tabMaya").classList.toggle("active", creator === "maya");
+            document.getElementById("tabMartin").classList.toggle("active", creator === "martin");
             document.getElementById("tabStudios").classList.toggle("active", creator === "studios");
             document.getElementById("chatHeader").textContent = "Conversation avec " + creatorNames[creator];
             loadConversation();
