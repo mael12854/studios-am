@@ -49,6 +49,17 @@
             border-color: var(--ink);
         }
 
+        .series-tab[data-genre="horreur"] {
+            border-color: #A88446;
+            color: #A88446;
+        }
+
+        .series-tab[data-genre="horreur"].active {
+            background: #A88446;
+            color: #0A0908;
+            border-color: #A88446;
+        }
+
         .player-wrap {
             max-width: 46rem;
             margin: 0 auto 1.5rem;
@@ -66,6 +77,43 @@
         .player-wrap h2 {
             font-size: 1.1rem;
             margin: 0 0 .75rem;
+        }
+
+        /* A&M Abîme — édition horreur de la charte, appliquée quand la série sélectionnée est de genre "horreur". */
+        [data-theme="abime"] {
+            --bg: #0A0908;
+            --surface: #1E1C1A;
+            --surface-alt: #141312;
+            --line: #2E2B27;
+            --ink: #D9D2C3;
+            --ink-muted: #8C8478;
+            --gold: #A88446;
+            --shadow-md: 0 2px 4px rgba(0,0,0,.5), 0 16px 32px rgba(0,0,0,.55);
+        }
+
+        [data-theme="abime"] body {
+            position: relative;
+            isolation: isolate;
+        }
+
+        [data-theme="abime"] body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: -1;
+            background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.75) 100%);
+        }
+
+        [data-theme="abime"] .player-wrap h2 {
+            font-family: var(--font-display);
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--gold);
+        }
+
+        [data-theme="abime"] .player-wrap iframe {
+            box-shadow: var(--shadow-md), 0 0 0 1px var(--line);
         }
     </style>
 </head>
@@ -201,8 +249,18 @@
 
             allSeries = series;
             currentSeriesId = series[0].id;
+            applyTheme();
             renderTabs();
             renderPlayer();
+        }
+
+        function applyTheme() {
+            const current = allSeries.find(s => s.id === currentSeriesId);
+            if (current && current.genre === "horreur") {
+                document.documentElement.setAttribute("data-theme", "abime");
+            } else {
+                document.documentElement.removeAttribute("data-theme");
+            }
         }
 
         function renderTabs() {
@@ -215,7 +273,7 @@
             }
 
             const tabs = allSeries.map(s => `
-                <button class="btn series-tab${s.id === currentSeriesId ? " active" : ""}" data-id="${s.id}">${escapeHtml(s.titre)}</button>
+                <button class="btn series-tab${s.id === currentSeriesId ? " active" : ""}" data-id="${s.id}" data-genre="${escapeHtml(s.genre || "")}">${escapeHtml(s.titre)}</button>
             `).join("");
 
             content.innerHTML = `
@@ -227,6 +285,7 @@
                 btn.addEventListener("click", () => {
                     currentSeriesId = btn.dataset.id;
                     content.querySelectorAll(".series-tab").forEach(b => b.classList.toggle("active", b.dataset.id === currentSeriesId));
+                    applyTheme();
                     renderPlayer();
                 });
             });
