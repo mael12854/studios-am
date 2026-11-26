@@ -105,21 +105,23 @@
     <p id="message" aria-live="polite"></p>
 
     <section class="card" style="margin-bottom: 1.5rem;">
-        <h2 style="margin-top:0; font-size:1.05rem;">Ajouter une série</h2>
-        <p class="small-muted" style="margin:0 0 1rem;">Colle un lien d'intégration Rush (ex: https://rush-videos.vercel.app/embed/...) ou une vidéo YouTube mise en « non répertorié ». Elle sera intégrée en iframe — jamais hébergée sur le site.</p>
+        <h2 style="margin-top:0; font-size:1.05rem;" id="formTitle">Ajouter une série</h2>
+        <p class="small-muted" style="margin:0 0 1rem;">Colle un lien d'intégration Rush (ex: https://rush-videos.vercel.app/embed/...) ou une vidéo YouTube mise en « non répertorié ». Elle sera intégrée en iframe — jamais hébergée sur le site. Le lien peut être laissé vide si la série n'a pas encore de contenu.</p>
         <form id="serieForm">
+            <input type="hidden" id="serieId">
             <div class="form-row">
                 <div class="form-group">
                     <label for="titre">Titre</label>
                     <input id="titre" type="text" required>
                 </div>
                 <div class="form-group">
-                    <label for="urlVideo">Lien Rush ou YouTube (non répertorié)</label>
-                    <input id="urlVideo" type="url" placeholder="https://rush-videos.vercel.app/embed/... ou https://www.youtube.com/watch?v=..." required>
+                    <label for="urlVideo">Lien Rush ou YouTube (non répertorié) — optionnel</label>
+                    <input id="urlVideo" type="url" placeholder="https://rush-videos.vercel.app/embed/... ou https://www.youtube.com/watch?v=...">
                 </div>
             </div>
             <div class="form-actions" style="margin-top:.75rem;">
-                <button type="submit" class="btn-primary">Ajouter</button>
+                <button type="submit" class="btn-primary" id="saveBtn">Ajouter</button>
+                <button type="button" class="btn" id="cancelEditBtn" style="display:none;">Annuler</button>
             </div>
         </form>
     </section>
@@ -168,21 +170,37 @@
         document.getElementById("serieForm").addEventListener("submit", async (event) => {
             event.preventDefault();
 
+            const id = document.getElementById("serieId").value;
             const titre = document.getElementById("titre").value.trim();
             const urlVideo = document.getElementById("urlVideo").value.trim();
 
-            if (!titre || !urlVideo) return;
+            if (!titre) return;
 
-            const { error } = await sb.from("series").insert({ titre, url_video: urlVideo, publie: false });
+            let error;
+            if (id) {
+                ({ error } = await sb.from("series").update({ titre, url_video: urlVideo || null }).eq("id", id));
+            } else {
+                ({ error } = await sb.from("series").insert({ titre, url_video: urlVideo || null, publie: false }));
+            }
 
             if (error) {
                 messageEl.textContent = "Erreur : " + error.message;
             } else {
-                messageEl.textContent = "Série ajoutée (non publiée). Clique sur « Publier » pour la rendre visible.";
-                document.getElementById("serieForm").reset();
+                messageEl.textContent = id ? "Série mise à jour." : "Série ajoutée (non publiée). Clique sur « Publier » pour la rendre visible.";
+                resetForm();
                 loadSeries();
             }
         });
+
+        function resetForm() {
+            document.getElementById("serieForm").reset();
+            document.getElementById("serieId").value = "";
+            document.getElementById("formTitle").textContent = "Ajouter une série";
+            document.getElementById("saveBtn").textContent = "Ajouter";
+            document.getElementById("cancelEditBtn").style.display = "none";
+        }
+
+        document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
 
         async function loadSeries() {
             const tbody = document.getElementById("seriesBody");
@@ -209,18 +227,32 @@
                         <span class="badge ${s.publie ? "publie" : ""}"><span class="dot"></span>${s.publie ? "Publiée" : "Non publiée"}</span>
                     </td>
                     <td data-label="Actions" class="actions-cell">
+                        <button class="btn" data-action="edit" data-id="${s.id}">Modifier</button>
                         <button class="btn" data-action="toggle" data-id="${s.id}" data-current="${s.publie ? "1" : "0"}">${s.publie ? "Dépublier" : "Publier"}</button>
                         <button class="btn btn-danger" data-action="delete" data-id="${s.id}">Supprimer</button>
                     </td>
                 </tr>
             `).join("");
 
+            tbody.querySelectorAll("[data-action='edit']").forEach(btn => {
+                btn.addEventListener("click", () => editSerie(data.find(s => s.id === btn.dataset.id)));
+            });
             tbody.querySelectorAll("[data-action='toggle']").forEach(btn => {
                 btn.addEventListener("click", () => togglePublie(btn.dataset.id, btn.dataset.current === "1"));
             });
             tbody.querySelectorAll("[data-action='delete']").forEach(btn => {
                 btn.addEventListener("click", () => deleteSerie(btn.dataset.id));
             });
+        }
+
+        function editSerie(serie) {
+            document.getElementById("serieId").value = serie.id;
+            document.getElementById("titre").value = serie.titre;
+            document.getElementById("urlVideo").value = serie.url_video || "";
+            document.getElementById("formTitle").textContent = "Modifier la série";
+            document.getElementById("saveBtn").textContent = "Enregistrer";
+            document.getElementById("cancelEditBtn").style.display = "inline-block";
+            window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
         async function togglePublie(id, current) {

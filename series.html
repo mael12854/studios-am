@@ -241,13 +241,15 @@
             const current = allSeries.find(s => s.id === currentSeriesId);
             if (!current) return;
 
-            const embedUrl = toEmbedUrl(current.url_video);
+            const embedUrl = current.url_video ? toEmbedUrl(current.url_video) : null;
             area.innerHTML = `
                 <div class="player-wrap">
                     <h2>${escapeHtml(current.titre)}</h2>
                     ${embedUrl
                         ? `<iframe src="${escapeHtml(embedUrl)}" title="${escapeHtml(current.titre)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture" allowfullscreen></iframe>`
-                        : `<p>Lien vidéo invalide.</p>`}
+                        : current.url_video
+                            ? `<p>Lien vidéo invalide.</p>`
+                            : `<p>Bientôt disponible.</p>`}
                 </div>
             `;
         }

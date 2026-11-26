@@ -46,6 +46,48 @@
         }
 
         .empty-hint { margin: 2rem auto; }
+
+        /* A&M Abîme — édition horreur de la charte, pour les films de genre "horreur". */
+        [data-theme="abime"] {
+            --bg: #0A0908;
+            --surface: #1E1C1A;
+            --surface-alt: #141312;
+            --line: #2E2B27;
+            --ink: #D9D2C3;
+            --ink-muted: #8C8478;
+            --gold: #A88446;
+            --shadow-md: 0 2px 4px rgba(0,0,0,.5), 0 16px 32px rgba(0,0,0,.55);
+        }
+
+        [data-theme="abime"] body {
+            position: relative;
+            isolation: isolate;
+        }
+
+        [data-theme="abime"] body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: -1;
+            background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.75) 100%);
+        }
+
+        [data-theme="abime"] .eyebrow {
+            font-family: var(--font-mono);
+            color: #8FB39A;
+        }
+
+        [data-theme="abime"] h1 {
+            font-family: var(--font-display);
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--gold);
+        }
+
+        [data-theme="abime"] video {
+            box-shadow: var(--shadow-md), 0 0 0 1px var(--line);
+        }
     </style>
 </head>
 <body>
@@ -120,6 +162,10 @@
             }
 
             titleEl.textContent = film.title;
+
+            if (film.genre === "horreur") {
+                document.documentElement.setAttribute("data-theme", "abime");
+            }
 
             if (!film.trailer_url) {
                 playerWrap.innerHTML = "<p class='empty-hint'>Aucune bande-annonce n'est disponible pour ce film pour l'instant.</p>";

@@ -188,6 +188,13 @@
                         <option value="prevision">En prévision</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="genre">Genre (optionnel)</label>
+                    <select id="genre">
+                        <option value="">Aucun</option>
+                        <option value="horreur">Horreur</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">
@@ -424,6 +431,7 @@
             const payload = {
                 category: document.getElementById("category").value,
                 status: document.getElementById("status").value,
+                genre: document.getElementById("genre").value || null,
                 title: document.getElementById("title").value.trim(),
                 description: document.getElementById("description").value.trim() || null,
                 image_url: document.getElementById("image_url").value.trim() || null,
@@ -517,6 +525,7 @@
             document.getElementById("articleId").value = article.id;
             document.getElementById("category").value = article.category;
             document.getElementById("status").value = article.status;
+            document.getElementById("genre").value = article.genre || "";
             document.getElementById("title").value = article.title;
             document.getElementById("description").value = article.description || "";
             document.getElementById("image_url").value = article.image_url || "";
