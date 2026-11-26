@@ -118,7 +118,7 @@
     </style>
 </head>
 <body>
-    <img class="page-logo" src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
+    <img class="page-logo" id="pageLogo" src="icon-512-lumiere.png" alt="Logo des studios a&amp;m">
 
     <h2>Séries</h2>
 
@@ -256,10 +256,13 @@
 
         function applyTheme() {
             const current = allSeries.find(s => s.id === currentSeriesId);
+            const logo = document.getElementById("pageLogo");
             if (current && current.genre === "horreur") {
                 document.documentElement.setAttribute("data-theme", "abime");
+                logo.src = "sceau-am-abime.png";
             } else {
                 document.documentElement.removeAttribute("data-theme");
+                logo.src = "icon-512-lumiere.png";
             }
         }
 

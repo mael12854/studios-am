@@ -91,7 +91,7 @@
     </style>
 </head>
 <body>
-    <img class="page-logo" src="icon-512.png" alt="Logo des studios a&amp;m">
+    <img class="page-logo" id="pageLogo" src="icon-512.png" alt="Logo des studios a&amp;m">
 
     <p class="eyebrow">Cellule Cinéma</p>
     <h1 id="filmTitle">Chargement...</h1>
@@ -165,6 +165,7 @@
 
             if (film.genre === "horreur") {
                 document.documentElement.setAttribute("data-theme", "abime");
+                document.getElementById("pageLogo").src = "sceau-am-abime.png";
             }
 
             if (!film.trailer_url) {
